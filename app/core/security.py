@@ -38,8 +38,12 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
         return False, "Password must contain digit"
     return True, ""
 
-def decode_token(token: str) -> dict[str, Any]:
+def decode_token(token: str, expected_type: str | None = None) -> dict[str, Any]:
     try:
-        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_type = payload.get("type")
+        if expected_type and token_type != expected_type:
+            raise JWTError(f"Invalid token type: expected {expected_type}")
+        return payload
     except JWTError as e:
         raise JWTError(f"Invalid token: {e}")

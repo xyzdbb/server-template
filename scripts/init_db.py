@@ -1,9 +1,10 @@
 from sqlmodel import Session
-from app.core.database import engine, init_db
+
 from app.core.config import settings
-from app.schemas.user import UserCreate
-from app.services.user_service import create_user
-from app.crud import user_crud
+from app.core.database import engine, init_db
+from app.modules.users.repository import user_repository
+from app.modules.users.schemas import UserCreate
+from app.modules.users.service import create_user
 
 def main():
     print("Creating tables...")
@@ -11,7 +12,7 @@ def main():
     
     print("Creating superuser...")
     with Session(engine) as session:
-        user = user_crud.get_by_email(session, settings.FIRST_SUPERUSER)
+        user = user_repository.get_by_email(session, settings.FIRST_SUPERUSER)
         if not user:
             user_in = UserCreate(
                 email=settings.FIRST_SUPERUSER,

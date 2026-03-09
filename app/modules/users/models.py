@@ -1,5 +1,7 @@
 from sqlmodel import Field
+
 from app.models.base import BaseModel
+
 
 class User(BaseModel, table=True):
     email: str = Field(unique=True, index=True, max_length=255)

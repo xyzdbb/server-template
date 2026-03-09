@@ -1,7 +1,8 @@
 import pytest
 from sqlmodel import Session
-from app.services.user_service import create_user
-from app.schemas.user import UserCreate
+
+from app.modules.users.schemas import UserCreate
+from app.modules.users.service import create_user
 
 def test_create_user(session: Session):
     user_in = UserCreate(email="test@example.com", password="Test1234")

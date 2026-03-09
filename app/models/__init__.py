@@ -1,4 +1,4 @@
-from app.models.user import User
-from app.models.item import Item
+from app.modules.items.models import Item
+from app.modules.users.models import User
 
 __all__ = ["User", "Item"]
