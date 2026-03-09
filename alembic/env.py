@@ -1,9 +1,14 @@
 from logging.config import fileConfig
+
 from sqlalchemy import engine_from_config, pool
 from alembic import context
+
 from app.core.config import settings
 from app.models.base import SQLModel
-import app.models
+
+# 显式导入所有 SQLModel 表模型，确保 autogenerate 能发现它们
+import app.modules.users.models  # noqa: F401
+import app.modules.items.models  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

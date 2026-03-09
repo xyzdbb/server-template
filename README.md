@@ -84,7 +84,7 @@ server-template/
 │   │   └── error_handler.py     # 全局异常 → JSON 响应
 │   ├── models/
 │   │   ├── base.py              # TableBase：id / created_at / updated_at / deleted_at
-│   │   └── __init__.py          # 聚合所有 Model，供 Alembic autogenerate 发现
+│   │   └── __init__.py          # 模型包（避免聚合导入以防循环导入）
 │   ├── modules/
 │   │   ├── auth/                # 认证模块：登录 / 刷新 / 注册 / 解析当前用户
 │   │   ├── users/               # 用户模块：创建 / 更新 / 列表查询 / 超管创建
@@ -223,14 +223,12 @@ class Order(TableBase, table=True):
     owner_id: int = Field(foreign_key="user.id")
 ```
 
-在 `app/models/__init__.py` 中注册模型（Alembic autogenerate 需要）：
+在 `alembic/env.py` 中注册模型导入（Alembic autogenerate 需要）：
 
 ```python
-from app.modules.users.models import User  # noqa: F401
-from app.modules.items.models import Item  # noqa: F401
-from app.modules.orders.models import Order  # noqa: F401
-
-__all__ = ["User", "Item", "Order"]
+import app.modules.users.models  # noqa: F401
+import app.modules.items.models  # noqa: F401
+import app.modules.orders.models  # noqa: F401
 ```
 
 ### 第 2 步：定义 Schema
@@ -457,7 +455,7 @@ uv run python scripts/bootstrap_db.py
 
 ### Model 注册
 
-新增数据库模型后，必须在 `app/models/__init__.py` 中导入，否则 Alembic autogenerate 无法检测到新表。
+新增数据库模型后，必须在 `alembic/env.py` 中显式导入对应的 `app.modules.<module>.models`，否则 Alembic autogenerate 无法检测到新表。
 
 ---
 

@@ -1,4 +1,5 @@
-from app.modules.users.models import User  # noqa: F401
-from app.modules.items.models import Item  # noqa: F401
+"""应用数据模型包。
 
-__all__ = ["User", "Item"]
+为避免运行时的循环导入，这里不做模型聚合导入。
+Alembic autogenerate 所需的模型导入在 `alembic/env.py` 中显式完成。
+"""

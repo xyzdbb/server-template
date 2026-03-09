@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 # 让测试独立于本地/CI 的环境变量与 .env 文件
 os.environ.setdefault("ENVIRONMENT", "test")
-os.environ.setdefault("SECRET_KEY", "test-secret-key")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-minimum-32-bytes!!")
 os.environ.setdefault("POSTGRES_SERVER", "localhost")
 os.environ.setdefault("POSTGRES_USER", "postgres")
 os.environ.setdefault("POSTGRES_PASSWORD", "postgres")

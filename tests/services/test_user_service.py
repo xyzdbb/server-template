@@ -44,4 +44,4 @@ def test_update_user_password(session: Session):
 def test_update_user_weak_password_raises(session: Session):
     user = create_user(session, UserCreate(email="weak@example.com", password="Test1234"))
     with pytest.raises(ValidationException):
-        update_user(session, user, UserUpdate(password="weak"))
+        update_user(session, user, UserUpdate(password="weakpass1"))
