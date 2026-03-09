@@ -1,24 +1,35 @@
 # FastAPI 现代化后端项目
 
-基于 FastAPI + SQLModel + PostgreSQL + Docker + uv 的企业级分层架构
+基于 FastAPI + SQLModel + PostgreSQL + Docker + uv 的企业级分层架构。
 
-## 🚀 快速开始
+## 数据库策略
 
-### Docker 部署 (推荐)
+项目统一采用 Alembic 管理数据库 schema。
+
+- 所有表结构变更都通过 `alembic revision` 和 `alembic upgrade` 管理
+- 应用启动不会自动建表或自动执行迁移
+- `scripts/bootstrap_db.py` 只负责初始化业务数据，例如超级管理员
+- 测试环境仍使用 `SQLModel.metadata.create_all()` 快速创建内存库
+
+## 快速开始
+
+### Docker 开发
 
 ```bash
 # 1. 配置环境
 cp .env.example .env
-# 编辑 .env 设置密钥和密码
 
-# 2. 启动开发环境
+# 2. 启动数据库和开发服务
 docker compose --profile dev up -d
 
-# 3. 初始化数据库
-docker compose exec backend-dev python scripts/init_db.py
+# 3. 执行 schema 迁移
+docker compose exec backend-dev alembic upgrade head
 
-# 4. 访问API文档
-http://localhost:8000/docs
+# 4. 初始化业务数据
+docker compose exec backend-dev python scripts/bootstrap_db.py
+
+# 5. 访问 API 文档
+open http://localhost:8000/docs
 ```
 
 ### 本地开发
@@ -33,23 +44,32 @@ uv sync
 # 3. 启动数据库
 docker compose up -d db
 
-# 4. 运行迁移
+# 4. 执行 schema 迁移
 uv run alembic upgrade head
 
-# 5. 初始化数据
-uv run python scripts/init_db.py
+# 5. 初始化业务数据
+uv run python scripts/bootstrap_db.py
 
 # 6. 启动服务
 uv run uvicorn app.main:app --reload
 ```
 
-## 📊 性能指标
+## 常用命令
 
-- 镜像大小: 180MB
-- 并发处理: 2000+ RPS
-- 测试覆盖: 90%+
-- 构建时间: 10-30秒 (缓存)
+```bash
+# 生成迁移
+uv run alembic revision --autogenerate -m "describe change"
 
-## 📄 License
+# 应用最新迁移
+uv run alembic upgrade head
+
+# 回滚一步
+uv run alembic downgrade -1
+
+# 初始化业务数据
+uv run python scripts/bootstrap_db.py
+```
+
+## License
 
 MIT

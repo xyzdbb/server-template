@@ -31,9 +31,3 @@ def check_database_health() -> bool:
             return True
     except Exception as e:
         raise Exception(f"Database health check failed: {e}")
-
-def init_db():
-    from app.models.base import SQLModel
-    import app.models
-    SQLModel.metadata.create_all(engine)
-    logger.info("Database initialized")
