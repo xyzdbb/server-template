@@ -9,7 +9,7 @@ from app.core.security import (
 )
 from app.modules.users.models import User
 from app.modules.users.repository import user_repository
-from app.utils.exceptions import AuthException
+from app.utils.exceptions import AuthException, ValidationException
 
 
 def authenticate_user(session: Session, email: str, password: str) -> User | None:
@@ -42,3 +42,18 @@ def refresh_user_token(session: Session, refresh_token: str) -> dict[str, str]:
         raise AuthException("Invalid refresh token")
 
     return create_user_token(user.id)
+
+
+def get_current_active_user(session: Session, token: str) -> User:
+    try:
+        payload = decode_token(token, expected_type="access")
+        user_id = int(payload.get("sub"))
+    except (JWTError, TypeError, ValueError) as exc:
+        raise AuthException("Could not validate credentials") from exc
+
+    user = user_repository.get(session, user_id)
+    if not user:
+        raise AuthException("Could not validate credentials")
+    if not user.is_active:
+        raise ValidationException("Inactive user")
+    return user

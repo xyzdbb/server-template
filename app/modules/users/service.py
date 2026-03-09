@@ -1,21 +1,11 @@
-from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
 from app.core.security import get_password_hash, validate_password_strength
+from app.core.transaction import commit_and_refresh
 from app.modules.users.models import User
 from app.modules.users.repository import user_repository
 from app.modules.users.schemas import UserCreate, UserListParams, UserUpdate
 from app.utils.exceptions import ConflictException, ValidationException
-
-
-def _commit_and_refresh(session: Session, user: User) -> User:
-    try:
-        session.commit()
-        session.refresh(user)
-        return user
-    except SQLAlchemyError:
-        session.rollback()
-        raise
 
 
 def create_user(session: Session, user_in: UserCreate) -> User:
@@ -31,7 +21,14 @@ def create_user(session: Session, user_in: UserCreate) -> User:
     user_data["hashed_password"] = get_password_hash(user_data.pop("password"))
 
     user = user_repository.create(session, user_data)
-    return _commit_and_refresh(session, user)
+    return commit_and_refresh(session, user)
+
+
+def create_superuser(session: Session, user_in: UserCreate) -> User:
+    user = create_user(session, user_in)
+    user.is_superuser = True
+    session.add(user)
+    return commit_and_refresh(session, user)
 
 
 def update_user(session: Session, user: User, user_in: UserUpdate) -> User:
@@ -43,7 +40,7 @@ def update_user(session: Session, user: User, user_in: UserUpdate) -> User:
         update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
 
     updated_user = user_repository.update(session, user, update_data)
-    return _commit_and_refresh(session, updated_user)
+    return commit_and_refresh(session, updated_user)
 
 
 def list_users(session: Session, params: UserListParams) -> list[User]:

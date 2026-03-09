@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Generic, Type, TypeVar
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -90,7 +90,7 @@ class RepositoryBase(Generic[ModelType]):
         try:
             for field, value in obj_in.items():
                 setattr(db_obj, field, value)
-            db_obj.updated_at = datetime.utcnow()
+            db_obj.updated_at = datetime.now(UTC)
             session.add(db_obj)
             session.flush()
             return db_obj
@@ -103,7 +103,7 @@ class RepositoryBase(Generic[ModelType]):
         try:
             obj = self.get(session, id)
             if obj:
-                obj.deleted_at = datetime.utcnow()
+                obj.deleted_at = datetime.now(UTC)
                 session.add(obj)
                 session.flush()
             return obj

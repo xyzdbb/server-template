@@ -4,7 +4,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.modules.users.repository import user_repository
 from app.modules.users.schemas import UserCreate
-from app.modules.users.service import create_user
+from app.modules.users.service import create_superuser
 
 
 def main() -> None:
@@ -21,10 +21,7 @@ def main() -> None:
             password=settings.FIRST_SUPERUSER_PASSWORD,
             full_name=settings.FIRST_SUPERUSER_FULL_NAME,
         )
-        user = create_user(session, user_in)
-        user.is_superuser = True
-        session.add(user)
-        session.commit()
+        user = create_superuser(session, user_in)
         print(f"Superuser created: {user.email}")
 
     print("Database bootstrap completed!")

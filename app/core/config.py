@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "FastAPI Backend"
     API_V1_STR: str = "/api/v1"
-    ENVIRONMENT: Literal["development", "staging", "production"] = "development"
+    ENVIRONMENT: Literal["development", "staging", "production", "test"] = "development"
     
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
@@ -24,7 +24,11 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
-        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        return (
+            "postgresql+psycopg://"
+            f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
     
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
     

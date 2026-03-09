@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import PaginationParams, SortOrder
 
@@ -23,11 +23,10 @@ class ItemUpdate(ItemBase):
 
 
 class ItemResponse(ItemBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int = Field(examples=[1])
     owner_id: int = Field(examples=[1])
-
-    class Config:
-        from_attributes = True
 
 
 class ItemListParams(PaginationParams):

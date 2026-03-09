@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from app.api.docs import (
     BAD_REQUEST_RESPONSE,
@@ -6,7 +6,7 @@ from app.api.docs import (
     UNAUTHORIZED_RESPONSE,
     UNPROCESSABLE_ENTITY_RESPONSE,
 )
-from app.api.deps import CurrentUser, SessionDep, UserListDep, get_current_superuser
+from app.api.deps import CurrentSuperuser, CurrentUser, SessionDep, UserListDep
 from app.modules.users.schemas import UserResponse, UserUpdate
 from app.modules.users.service import count_users, list_users, update_user
 from app.schemas.common import Page
@@ -54,7 +54,7 @@ def update_user_me(session: SessionDep, current_user: CurrentUser, user_in: User
 def read_users(
     session: SessionDep,
     params: UserListDep,
-    current_user: CurrentUser = Depends(get_current_superuser),
+    current_user: CurrentSuperuser,
 ):
     users = list_users(session, params)
     total = count_users(session, params)

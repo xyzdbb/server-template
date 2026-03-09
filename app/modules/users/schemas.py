@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.schemas.common import PaginationParams, SortOrder
 
@@ -25,12 +25,11 @@ class UserUpdate(UserBase):
 
 
 class UserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int = Field(examples=[1])
     is_active: bool = Field(examples=[True])
     is_superuser: bool = Field(examples=[False])
-
-    class Config:
-        from_attributes = True
 
 
 class UserListParams(PaginationParams):

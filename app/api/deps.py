@@ -1,16 +1,14 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Query, status
+from fastapi import Depends, HTTPException, Query
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
 from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.database import get_session
-from app.core.security import decode_token
+from app.modules.auth.service import get_current_active_user
 from app.modules.items.schemas import ItemListParams
 from app.modules.users.models import User
-from app.modules.users.repository import user_repository
 from app.modules.users.schemas import UserListParams
 from app.schemas.common import SortOrder
 
@@ -72,25 +70,7 @@ def get_item_list_params(
     )
 
 def get_current_user(session: SessionDep, token: TokenDep) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = decode_token(token, expected_type="access")
-        user_id: int = int(payload.get("sub"))
-        if user_id is None:
-            raise credentials_exception
-    except (JWTError, ValueError):
-        raise credentials_exception
-    
-    user = user_repository.get(session, user_id)
-    if user is None:
-        raise credentials_exception
-    if not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return user
+    return get_current_active_user(session, token)
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 UserListDep = Annotated[UserListParams, Depends(get_user_list_params)]
@@ -100,3 +80,6 @@ def get_current_superuser(current_user: CurrentUser) -> User:
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Not enough privileges")
     return current_user
+
+
+CurrentSuperuser = Annotated[User, Depends(get_current_superuser)]
