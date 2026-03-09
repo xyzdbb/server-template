@@ -69,7 +69,3 @@ uv run alembic downgrade -1
 # 初始化业务数据
 uv run python scripts/bootstrap_db.py
 ```
-
-## License
-
-MIT
