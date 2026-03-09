@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from app.core.logging import logger
 from app.models.base import BaseModel
 from app.schemas.common import SortOrder
+from app.utils.exceptions import ValidationException
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
 
@@ -17,6 +18,8 @@ class RepositoryBase(Generic[ModelType]):
         self.model = model
 
     def _apply_sort(self, statement, sort_by: str, sort_order: SortOrder):
+        if not hasattr(self.model, sort_by):
+            raise ValidationException(f"Invalid sort field: '{sort_by}'")
         column = getattr(self.model, sort_by)
         return statement.order_by(column.asc() if sort_order == "asc" else column.desc())
 
@@ -77,7 +80,6 @@ class RepositoryBase(Generic[ModelType]):
             session.flush()
             return db_obj
         except SQLAlchemyError as exc:
-            session.rollback()
             logger.error(f"Error creating {self.model.__name__}: {exc}")
             raise
 
@@ -95,7 +97,6 @@ class RepositoryBase(Generic[ModelType]):
             session.flush()
             return db_obj
         except SQLAlchemyError as exc:
-            session.rollback()
             logger.error(f"Error updating {self.model.__name__}: {exc}")
             raise
 
@@ -108,6 +109,5 @@ class RepositoryBase(Generic[ModelType]):
                 session.flush()
             return obj
         except SQLAlchemyError as exc:
-            session.rollback()
             logger.error(f"Error soft deleting {self.model.__name__}: {exc}")
             raise

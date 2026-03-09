@@ -55,6 +55,4 @@ def update_user_item(
 def delete_user_item(session: Session, item_id: int, current_user: User) -> Item:
     item = get_user_item(session, item_id, current_user)
     deleted = item_repository.soft_delete(session, item.id)
-    session.commit()
-    session.refresh(deleted)
-    return deleted
+    return commit_and_refresh(session, deleted)

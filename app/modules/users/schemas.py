@@ -14,8 +14,10 @@ class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=40, examples=["StrongPass123"])
 
 
-class UserUpdate(UserBase):
-    email: EmailStr | None = None
+class UserUpdate(BaseModel):
+    """所有字段均为可选，仅更新显式传入的字段。"""
+    email: EmailStr | None = Field(default=None, examples=["new@example.com"])
+    full_name: str | None = Field(default=None, examples=["Jane Doe"])
     password: str | None = Field(
         default=None,
         min_length=8,

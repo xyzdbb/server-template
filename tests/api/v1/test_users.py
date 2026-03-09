@@ -1,7 +1,60 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from app.modules.users.repository import user_repository
+
+
+@pytest.fixture
+def user_auth_headers(client: TestClient) -> dict:
+    client.post(
+        "/api/v1/auth/signup",
+        json={"email": "me@example.com", "password": "Test1234", "full_name": "Me"},
+    )
+    login = client.post(
+        "/api/v1/auth/login",
+        data={"username": "me@example.com", "password": "Test1234"},
+    )
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+
+def test_update_user_me_full_name(client: TestClient, user_auth_headers: dict):
+    response = client.put(
+        "/api/v1/users/me",
+        json={"full_name": "Updated Name"},
+        headers=user_auth_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["full_name"] == "Updated Name"
+
+
+def test_update_user_me_password(client: TestClient, user_auth_headers: dict):
+    response = client.put(
+        "/api/v1/users/me",
+        json={"password": "NewPass1234"},
+        headers=user_auth_headers,
+    )
+    assert response.status_code == 200
+    # 用新密码能登录
+    login = client.post(
+        "/api/v1/auth/login",
+        data={"username": "me@example.com", "password": "NewPass1234"},
+    )
+    assert login.status_code == 200
+
+
+def test_update_user_me_weak_password_returns_400(client: TestClient, user_auth_headers: dict):
+    response = client.put(
+        "/api/v1/users/me",
+        json={"password": "weak"},
+        headers=user_auth_headers,
+    )
+    assert response.status_code == 422
+
+
+def test_read_users_requires_superuser(client: TestClient, user_auth_headers: dict):
+    response = client.get("/api/v1/users/", headers=user_auth_headers)
+    assert response.status_code == 403
 
 
 def test_read_users_returns_paginated_response_for_superuser(

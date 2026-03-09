@@ -11,9 +11,10 @@ class RequestIDFilter(logging.Filter):
         return True
 
 
-def setup_logging():
-    root = logging.getLogger()
-    root.handlers.clear()
+def setup_logging() -> logging.Logger:
+    app_logger = logging.getLogger("app")
+    if app_logger.handlers:
+        return app_logger
 
     handler = logging.StreamHandler(sys.stdout)
     formatter = jsonlogger.JsonFormatter(
@@ -23,9 +24,10 @@ def setup_logging():
     handler.setFormatter(formatter)
     handler.addFilter(RequestIDFilter())
 
-    root.addHandler(handler)
-    root.setLevel(logging.INFO)
-    return root
+    app_logger.addHandler(handler)
+    app_logger.setLevel(logging.INFO)
+    app_logger.propagate = False
+    return app_logger
 
 
 logger = setup_logging()

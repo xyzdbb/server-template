@@ -8,6 +8,9 @@ from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# 用于时序攻击防护：当用户不存在时执行此 dummy 哈希以抹平响应时间差
+DUMMY_HASH = pwd_context.hash("dummy-password-for-timing-safety")
+
 
 class InvalidTokenError(Exception):
     pass

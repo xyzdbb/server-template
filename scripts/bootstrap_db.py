@@ -1,7 +1,7 @@
 from sqlmodel import Session
 
 from app.core.config import settings
-from app.core.database import engine
+from app.core.database import get_engine
 from app.modules.users.repository import user_repository
 from app.modules.users.schemas import UserCreate
 from app.modules.users.service import create_superuser
@@ -10,7 +10,7 @@ from app.modules.users.service import create_superuser
 def main() -> None:
     print("Bootstrapping database data...")
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         user = user_repository.get_by_email(session, settings.FIRST_SUPERUSER)
         if user:
             print("Superuser already exists")

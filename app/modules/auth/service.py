@@ -1,6 +1,7 @@
 from sqlmodel import Session
 
 from app.core.security import (
+    DUMMY_HASH,
     InvalidTokenError,
     create_access_token,
     create_refresh_token,
@@ -15,6 +16,8 @@ from app.utils.exceptions import AuthException, ValidationException
 def authenticate_user(session: Session, email: str, password: str) -> User | None:
     user = user_repository.get_by_email(session, email)
     if not user:
+        # 执行 dummy 验证以抹平用户不存在与密码错误的响应时间差，防止时序攻击枚举邮箱
+        verify_password(password, DUMMY_HASH)
         return None
     if not verify_password(password, user.hashed_password):
         return None

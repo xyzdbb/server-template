@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 
 from app.api.docs import (
-    BAD_REQUEST_RESPONSE,
     CONFLICT_RESPONSE,
     UNAUTHORIZED_RESPONSE,
     UNPROCESSABLE_ENTITY_RESPONSE,
@@ -13,6 +12,7 @@ from app.modules.auth.schemas import RefreshTokenRequest, Token
 from app.modules.auth.service import authenticate_user, create_user_token, refresh_user_token
 from app.modules.users.schemas import UserCreate, UserResponse
 from app.modules.users.service import create_user
+from app.utils.exceptions import AuthException
 
 router = APIRouter()
 
@@ -34,14 +34,14 @@ router = APIRouter()
                 }
             },
         },
-        400: BAD_REQUEST_RESPONSE,
+        401: UNAUTHORIZED_RESPONSE,
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
 def login(session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = authenticate_user(session, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
+        raise AuthException("Incorrect email or password")
     tokens = create_user_token(user.id)
     return Token(**tokens)
 

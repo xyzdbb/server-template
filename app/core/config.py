@@ -1,5 +1,7 @@
 from functools import lru_cache
 from typing import List, Literal
+from urllib.parse import quote_plus
+
 from pydantic import AnyHttpUrl, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -24,9 +26,10 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
+        user = quote_plus(self.POSTGRES_USER)
+        password = quote_plus(self.POSTGRES_PASSWORD)
         return (
-            "postgresql+psycopg://"
-            f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql+psycopg://{user}:{password}"
             f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
     

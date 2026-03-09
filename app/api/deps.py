@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Query
+from fastapi import Depends, Query
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session
 
@@ -11,6 +11,7 @@ from app.modules.items.schemas import ItemListParams
 from app.modules.users.models import User
 from app.modules.users.schemas import UserListParams
 from app.schemas.common import SortOrder
+from app.utils.exceptions import PermissionDeniedException
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
@@ -69,16 +70,19 @@ def get_item_list_params(
         search=search,
     )
 
+
 def get_current_user(session: SessionDep, token: TokenDep) -> User:
     return get_current_active_user(session, token)
+
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 UserListDep = Annotated[UserListParams, Depends(get_user_list_params)]
 ItemListDep = Annotated[ItemListParams, Depends(get_item_list_params)]
 
+
 def get_current_superuser(current_user: CurrentUser) -> User:
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Not enough privileges")
+        raise PermissionDeniedException("Not enough privileges")
     return current_user
 
 
