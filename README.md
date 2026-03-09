@@ -83,7 +83,7 @@ server-template/
 │   │   ├── logging.py           # 记录请求方法 / 路径 / 状态码 / 耗时
 │   │   └── error_handler.py     # 全局异常 → JSON 响应
 │   ├── models/
-│   │   ├── base.py              # BaseModel：id / created_at / updated_at / deleted_at
+│   │   ├── base.py              # TableBase：id / created_at / updated_at / deleted_at
 │   │   └── __init__.py          # 聚合所有 Model，供 Alembic autogenerate 发现
 │   ├── modules/
 │   │   ├── auth/                # 认证模块：登录 / 刷新 / 注册 / 解析当前用户
@@ -214,10 +214,10 @@ open http://localhost:8000/docs
 
 ```python
 from sqlmodel import Field
-from app.models.base import BaseModel
+from app.models.base import TableBase
 
 
-class Order(BaseModel, table=True):
+class Order(TableBase, table=True):
     title: str = Field(max_length=255)
     amount: int = Field(default=0)
     owner_id: int = Field(foreign_key="user.id")
@@ -449,7 +449,7 @@ uv run python scripts/bootstrap_db.py
 
 ### 软删除机制
 
-所有模型继承 `BaseModel`，包含 `deleted_at` 字段：
+所有模型继承 `TableBase`，包含 `deleted_at` 字段：
 
 - `RepositoryBase.soft_delete()` 设置 `deleted_at` 为当前时间
 - 所有查询方法默认过滤 `deleted_at IS NULL`
@@ -471,7 +471,7 @@ uv run python scripts/bootstrap_db.py
 - **覆盖层次**：
   - `tests/api/v1/` — 接口层测试（完整 HTTP 请求/响应）
   - `tests/services/` — 服务层测试（业务逻辑）
-  - `tests/crud/` — 仓储层测试（数据访问）
+  - `tests/repositories/` — 仓储层测试（数据访问）
 
 ### 运行测试
 
@@ -521,7 +521,7 @@ docker compose --profile prod up -d
 - **运行阶段**：`python:3.12-slim-bookworm` 精简镜像
 - 仅包含运行时依赖（不含 dev 工具）
 - 非 root 用户 (`appuser`) 运行
-- `entrypoint.sh` 自动执行：迁移 → 数据初始化 → gunicorn 启动（4 workers）
+- `entrypoint.sh` 自动执行：迁移 → 数据初始化 → gunicorn 启动（默认 4 workers，可通过 `WEB_CONCURRENCY` 配置）
 - 内置 healthcheck（每 30s 检测 `/api/v1/health`）
 
 ### Compose 服务说明

@@ -6,7 +6,7 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
-class BaseModel(SQLModel):
+class TableBase(SQLModel):
     id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)

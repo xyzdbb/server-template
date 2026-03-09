@@ -6,11 +6,11 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.core.logging import logger
-from app.models.base import BaseModel
+from app.models.base import TableBase
 from app.schemas.common import SortOrder
 from app.utils.exceptions import ValidationException
 
-ModelType = TypeVar("ModelType", bound=BaseModel)
+ModelType = TypeVar("ModelType", bound=TableBase)
 
 
 class RepositoryBase(Generic[ModelType]):
