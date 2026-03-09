@@ -43,22 +43,15 @@ def update_user(session: Session, user: User, user_in: UserUpdate) -> User:
     return commit_and_refresh(session, updated_user)
 
 
-def list_users(session: Session, params: UserListParams) -> list[User]:
-    return user_repository.get_multi(
+def list_users_with_count(
+    session: Session, params: UserListParams
+) -> tuple[list[User], int]:
+    return user_repository.get_multi_with_count(
         session,
         skip=params.skip,
         limit=params.limit,
         sort_by=params.sort_by,
         sort_order=params.sort_order,
-        search=params.search,
-        is_active=params.is_active,
-        is_superuser=params.is_superuser,
-    )
-
-
-def count_users(session: Session, params: UserListParams) -> int:
-    return user_repository.count_filtered(
-        session,
         search=params.search,
         is_active=params.is_active,
         is_superuser=params.is_superuser,

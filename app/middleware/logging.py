@@ -1,17 +1,41 @@
 import time
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from app.core.logging import logger
 
-class LoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+from app.core.logging import logger
+from app.middleware.request_id import request_id_ctx
+
+
+class LoggingMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
         start_time = time.time()
-        response = await call_next(request)
-        process_time = time.time() - start_time
-        
-        logger.info(
-            f"request_id={getattr(request.state, 'request_id', 'N/A')} "
-            f"method={request.method} path={request.url.path} "
-            f"status={response.status_code} duration={process_time:.3f}s"
-        )
-        return response
+        status_code = 500
+
+        async def send_wrapper(message):
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_wrapper)
+        finally:
+            duration = time.time() - start_time
+            method = scope.get("method", "")
+            path = scope.get("path", "")
+            rid = request_id_ctx.get("")
+            logger.info(
+                "request completed",
+                extra={
+                    "request_id": rid,
+                    "method": method,
+                    "path": path,
+                    "status": status_code,
+                    "duration": f"{duration:.3f}s",
+                },
+            )

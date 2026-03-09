@@ -9,15 +9,16 @@ from app.api.docs import (
 from app.api.deps import CurrentUser, ItemListDep, SessionDep
 from app.modules.items.schemas import ItemCreate, ItemUpdate, ItemResponse
 from app.modules.items.service import (
-    count_user_items,
     create_item,
+    delete_user_item,
     get_user_item,
-    get_user_items,
+    get_user_items_with_count,
     update_user_item,
 )
-from app.schemas.common import Page
+from app.schemas.common import Message, Page
 
 router = APIRouter()
+
 
 @router.post(
     "/",
@@ -31,8 +32,8 @@ router = APIRouter()
     },
 )
 def create_new_item(session: SessionDep, current_user: CurrentUser, item_in: ItemCreate):
-    item = create_item(session, item_in, current_user)
-    return item
+    return create_item(session, item_in, current_user)
+
 
 @router.get(
     "/",
@@ -49,14 +50,14 @@ def read_items(
     current_user: CurrentUser,
     params: ItemListDep,
 ):
-    items = get_user_items(session, current_user.id, params)
-    total = count_user_items(session, current_user.id, params)
+    items, total = get_user_items_with_count(session, current_user.id, params)
     return Page[ItemResponse](
         items=items,
         total=total,
         skip=params.skip,
         limit=params.limit,
     )
+
 
 @router.get(
     "/{item_id}",
@@ -77,6 +78,7 @@ def read_item(
 ):
     return get_user_item(session, item_id, current_user)
 
+
 @router.put(
     "/{item_id}",
     response_model=ItemResponse,
@@ -96,3 +98,23 @@ def update_item(
     item_in: ItemUpdate = ...,
 ):
     return update_user_item(session, item_id, item_in, current_user)
+
+
+@router.delete(
+    "/{item_id}",
+    response_model=Message,
+    summary="Delete item",
+    description="Soft-delete an item owned by the authenticated user.",
+    responses={
+        401: UNAUTHORIZED_RESPONSE,
+        403: FORBIDDEN_RESPONSE,
+        404: NOT_FOUND_RESPONSE,
+    },
+)
+def delete_item(
+    session: SessionDep,
+    current_user: CurrentUser,
+    item_id: int = Path(description="Unique identifier of the item."),
+):
+    delete_user_item(session, item_id, current_user)
+    return Message(message="Item deleted successfully")

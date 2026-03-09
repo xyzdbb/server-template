@@ -15,12 +15,12 @@ def create_item(session: Session, item_in: ItemCreate, owner: User) -> Item:
     return commit_and_refresh(session, item)
 
 
-def get_user_items(
+def get_user_items_with_count(
     session: Session,
     owner_id: int,
     params: ItemListParams,
-) -> list[Item]:
-    return item_repository.get_by_owner(
+) -> tuple[list[Item], int]:
+    return item_repository.get_by_owner_with_count(
         session,
         owner_id,
         skip=params.skip,
@@ -29,10 +29,6 @@ def get_user_items(
         sort_order=params.sort_order,
         search=params.search,
     )
-
-
-def count_user_items(session: Session, owner_id: int, params: ItemListParams) -> int:
-    return item_repository.count_by_owner(session, owner_id, search=params.search)
 
 
 def get_user_item(session: Session, item_id: int, current_user: User) -> Item:
@@ -54,3 +50,11 @@ def update_user_item(
     update_data = item_in.model_dump(exclude_unset=True)
     updated_item = item_repository.update(session, item, update_data)
     return commit_and_refresh(session, updated_item)
+
+
+def delete_user_item(session: Session, item_id: int, current_user: User) -> Item:
+    item = get_user_item(session, item_id, current_user)
+    deleted = item_repository.soft_delete(session, item.id)
+    session.commit()
+    session.refresh(deleted)
+    return deleted

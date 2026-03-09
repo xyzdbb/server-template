@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.core.config import settings
 from app.api.v1.router import api_router
+from app.middleware.error_handler import register_exception_handlers
 from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.logging import LoggingMiddleware
-from app.middleware.error_handler import ErrorHandlerMiddleware
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -20,11 +21,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(RequestIDMiddleware)
+# Starlette 中间件后注册先执行，实际顺序: RequestID → Logging → CORS
 app.add_middleware(LoggingMiddleware)
-app.add_middleware(ErrorHandlerMiddleware)
+app.add_middleware(RequestIDMiddleware)
+
+register_exception_handlers(app)
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
 
 @app.get("/")
 def root():

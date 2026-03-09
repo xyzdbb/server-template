@@ -8,7 +8,7 @@ from app.api.docs import (
 )
 from app.api.deps import CurrentSuperuser, CurrentUser, SessionDep, UserListDep
 from app.modules.users.schemas import UserResponse, UserUpdate
-from app.modules.users.service import count_users, list_users, update_user
+from app.modules.users.service import list_users_with_count, update_user
 from app.schemas.common import Page
 
 router = APIRouter()
@@ -56,8 +56,7 @@ def read_users(
     params: UserListDep,
     current_user: CurrentSuperuser,
 ):
-    users = list_users(session, params)
-    total = count_users(session, params)
+    users, total = list_users_with_count(session, params)
     return Page[UserResponse](
         items=users,
         total=total,

@@ -1,7 +1,7 @@
-from jose import JWTError
 from sqlmodel import Session
 
 from app.core.security import (
+    InvalidTokenError,
     create_access_token,
     create_refresh_token,
     decode_token,
@@ -34,7 +34,7 @@ def refresh_user_token(session: Session, refresh_token: str) -> dict[str, str]:
     try:
         payload = decode_token(refresh_token, expected_type="refresh")
         user_id = int(payload.get("sub"))
-    except (JWTError, TypeError, ValueError) as exc:
+    except (InvalidTokenError, TypeError, ValueError) as exc:
         raise AuthException("Invalid refresh token") from exc
 
     user = user_repository.get(session, user_id)
@@ -48,7 +48,7 @@ def get_current_active_user(session: Session, token: str) -> User:
     try:
         payload = decode_token(token, expected_type="access")
         user_id = int(payload.get("sub"))
-    except (JWTError, TypeError, ValueError) as exc:
+    except (InvalidTokenError, TypeError, ValueError) as exc:
         raise AuthException("Could not validate credentials") from exc
 
     user = user_repository.get(session, user_id)
