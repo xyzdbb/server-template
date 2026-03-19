@@ -28,6 +28,7 @@
 - [测试](#测试)
 - [Docker 部署](#docker-部署)
 - [项目约定](#项目约定)
+- [待演进方向](#待演进方向)
 
 ---
 
@@ -603,3 +604,21 @@ sequenceDiagram
 - Python 3.12+，遵循 PEP 8
 - 使用 ruff 格式化和 lint（行宽 88）
 - 类型注解使用 Python 3.10+ 语法（`str | None` 而非 `Optional[str]`）
+
+---
+
+## 待演进方向
+
+以下为模板当前未覆盖但业务扩展时建议关注的方向：
+
+| 方向 | 说明 |
+|------|------|
+| **异步 DB** | 当前为全同步设计（SQLModel 同步 Session），高并发 I/O 密集场景可切换至 `create_async_engine` + `AsyncSession` |
+| **RBAC 权限模型** | 当前仅 `is_superuser` 布尔值，复杂业务需引入角色/权限表 |
+| **access token 黑名单** | 当前 access token 无法主动撤销，密码修改/账号禁用后可将旧 token jti 加入 Redis 黑名单，TTL 与 access token 一致 |
+| **文件存储** | OSS / S3 文件上传集成 |
+| **消息队列** | Celery / ARQ 异步任务处理（邮件、通知、定时任务） |
+| **OAuth / SSO** | 第三方登录集成（GitHub、Google 等） |
+| **多租户** | 租户隔离策略（行级隔离或 schema 隔离） |
+| **deps.py 拆分** | 模块增多时，将 `deps.py` 按职责拆分为多个文件 |
+| **可观测性** | 接入 OpenTelemetry 做分布式追踪，配合 Prometheus + Grafana 监控指标 |
