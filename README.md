@@ -71,7 +71,7 @@ server-template/
 │   │   ├── docs.py              # OpenAPI 响应模板（401/403/404/409/422）
 │   │   └── v1/
 │   │       ├── router.py        # v1 路由聚合
-│   │       └── endpoints/       # 接口层：auth / users / items / health
+│   │       └── endpoints/       # 接口层：auth / users / health
 │   ├── core/
 │   │   ├── config.py            # 配置管理（pydantic-settings，读取 .env）
 │   │   ├── database.py          # 数据库引擎 / Session 生成器 / 健康检查
@@ -87,8 +87,7 @@ server-template/
 │   │   └── __init__.py          # 模型包（避免聚合导入以防循环导入）
 │   ├── modules/
 │   │   ├── auth/                # 认证模块：登录 / 刷新 / 注册 / 解析当前用户
-│   │   ├── users/               # 用户模块：创建 / 更新 / 列表查询 / 超管创建
-│   │   └── items/               # 示例业务模块：当前用户资源的 CRUD
+│   │   └── users/               # 用户模块：创建 / 更新 / 列表查询 / 超管创建
 │   ├── repositories/
 │   │   └── base.py              # 泛型 RepositoryBase[ModelType]
 │   ├── schemas/
@@ -125,7 +124,6 @@ server-template/
 |------|------|
 | `auth` | 登录认证、Token 签发/刷新、用户注册、解析当前登录用户 |
 | `users` | 用户 CRUD、超管创建、用户列表（仅管理员） |
-| `items` | 示例业务模块，演示当前用户资源的增删改查、归属权限校验 |
 
 ---
 
@@ -227,7 +225,6 @@ class Order(TableBase, table=True):
 
 ```python
 import app.modules.users.models  # noqa: F401
-import app.modules.items.models  # noqa: F401
 import app.modules.orders.models  # noqa: F401
 ```
 
@@ -363,7 +360,7 @@ def create_new_order(
 在 `app/api/v1/router.py` 中添加：
 
 ```python
-from app.api.v1.endpoints import auth, users, items, health, orders
+from app.api.v1.endpoints import auth, users, health, orders
 
 api_router.include_router(orders.router, prefix="/orders", tags=["orders"])
 ```
@@ -377,7 +374,7 @@ uv run alembic upgrade head
 
 ### 第 8 步：编写测试
 
-在 `tests/api/v1/test_orders.py` 中编写接口测试，参考 `test_items.py` 的 fixture 模式。
+在 `tests/api/v1/test_orders.py` 中编写接口测试，参考 `test_users.py` 的 fixture 模式。
 
 ---
 
@@ -398,16 +395,6 @@ uv run alembic upgrade head
 | GET | `/me` | 获取当前用户信息 | access token |
 | PUT | `/me` | 更新当前用户信息 | access token |
 | GET | `/` | 分页查询用户列表（支持搜索、状态过滤、排序） | 仅超级管理员 |
-
-### Items 模块 `/api/v1/items`
-
-| 方法 | 路径 | 说明 | 认证 |
-|------|------|------|------|
-| POST | `/` | 创建 item | access token |
-| GET | `/` | 获取当前用户的 item 列表（分页、搜索、排序） | access token |
-| GET | `/{item_id}` | 获取单个 item（仅限拥有者） | access token |
-| PUT | `/{item_id}` | 更新 item（仅限拥有者） | access token |
-| DELETE | `/{item_id}` | 软删除 item（仅限拥有者） | access token |
 
 ### Health `/api/v1/health`
 
@@ -484,7 +471,7 @@ uv run pytest tests/api/v1/test_auth.py
 uv run pytest --cov=app --cov-report=term-missing --no-cov-on-fail
 
 # 运行指定测试函数
-uv run pytest tests/api/v1/test_items.py::test_create_item -v
+uv run pytest tests/api/v1/test_auth.py::test_login -v
 ```
 
 覆盖率 HTML 报告输出到 `htmlcov/`（已在 `.gitignore` 中忽略）。
