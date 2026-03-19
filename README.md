@@ -1,16 +1,18 @@
 # FastAPI 后端项目模板
 
-基于 **FastAPI + SQLModel + PostgreSQL + Alembic + uv + Docker** 的生产就绪后端模板，采用按业务模块组织 + 模块内四层分离架构，可直接作为新业务项目底座。
+基于 **FastAPI + SQLModel + PostgreSQL + Redis + Alembic + uv + Docker** 的生产就绪后端模板，采用按业务模块组织 + 模块内四层分离架构，可直接作为新业务项目底座。
 
 ## 核心特性
 
 - 四层分层架构：Endpoint → Service → Repository → Model
 - JWT 双 Token 认证（access + refresh），含时序攻击防护
+- Refresh Token 可主动撤销（Redis jti 机制），支持安全登出
+- Auth 端点频率限制（slowapi + Redis），防暴力破解
 - 泛型 Base Repository，内置 CRUD + 软删除 + 分页排序
 - 统一异常体系 + 全局错误处理
 - 结构化 JSON 日志 + 请求 ID 全链路追踪
 - Alembic 数据库迁移管理
-- Docker 多阶段构建 + Compose 开发/生产双模式
+- Docker 多阶段构建 + Compose 开发/生产双模式（含 Redis 服务）
 - 完善的测试体系（接口层 / 服务层 / 仓储层）
 
 ---
@@ -26,7 +28,6 @@
 - [测试](#测试)
 - [Docker 部署](#docker-部署)
 - [项目约定](#项目约定)
-- [待演进方向](#待演进方向)
 
 ---
 
@@ -56,6 +57,7 @@ flowchart TD
     Endpoint --> depInjection
     Endpoint --> Service[modules/*/service.py]
     Service --> Repository[modules/*/repository.py]
+    Service --> Redis[(Redis)]
     Repository --> Model[modules/*/models.py]
     Model --> DB[(PostgreSQL)]
 ```
@@ -65,7 +67,7 @@ flowchart TD
 ```text
 server-template/
 ├── app/
-│   ├── main.py                  # 应用入口，组装 FastAPI / CORS / 中间件 / 路由
+│   ├── main.py                  # 应用入口，组装 FastAPI / CORS / 中间件 / 路由 / lifespan
 │   ├── api/
 │   │   ├── deps.py              # 依赖注入：Session、Token、CurrentUser、分页参数
 │   │   ├── docs.py              # OpenAPI 响应模板（401/403/404/409/422）
@@ -75,18 +77,19 @@ server-template/
 │   ├── core/
 │   │   ├── config.py            # 配置管理（pydantic-settings，读取 .env）
 │   │   ├── database.py          # 数据库引擎 / Session 生成器 / 健康检查
+│   │   ├── limiter.py           # slowapi Limiter 实例（Redis 后端）
 │   │   ├── logging.py           # 结构化 JSON 日志 + RequestID 过滤器
-│   │   ├── security.py          # JWT 编解码 / 密码哈希 / 强度校验
+│   │   ├── redis.py             # Redis 异步连接池管理
+│   │   ├── security.py          # JWT 编解码（含 jti）/ 密码哈希 / 强度校验
 │   │   └── transaction.py       # commit_and_refresh 事务辅助
 │   ├── middleware/
 │   │   ├── request_id.py        # 生成 UUID 请求 ID，注入响应头
 │   │   ├── logging.py           # 记录请求方法 / 路径 / 状态码 / 耗时
 │   │   └── error_handler.py     # 全局异常 → JSON 响应
 │   ├── models/
-│   │   ├── base.py              # TableBase：id / created_at / updated_at / deleted_at
-│   │   └── __init__.py          # 模型包（避免聚合导入以防循环导入）
+│   │   └── base.py              # TableBase：id / created_at / updated_at / deleted_at
 │   ├── modules/
-│   │   ├── auth/                # 认证模块：登录 / 刷新 / 注册 / 解析当前用户
+│   │   ├── auth/                # 认证模块：登录 / 刷新 / 注册 / 登出 / 解析当前用户
 │   │   └── users/               # 用户模块：创建 / 更新 / 列表查询 / 超管创建
 │   ├── repositories/
 │   │   └── base.py              # 泛型 RepositoryBase[ModelType]
@@ -101,7 +104,7 @@ server-template/
 ├── tests/                       # 测试套件
 ├── Dockerfile                   # 生产镜像（多阶段构建）
 ├── Dockerfile.dev               # 开发镜像（热重载）
-├── docker-compose.yml           # Compose 编排（dev / prod profile）
+├── docker-compose.yml           # Compose 编排（db + redis + dev/prod profile）
 ├── pyproject.toml               # 项目元数据 + 依赖 + 工具配置
 └── .env.example                 # 环境变量模板
 ```
@@ -112,17 +115,18 @@ server-template/
 2. `RequestIDMiddleware` 生成 UUID 并写入 `ContextVar`，响应头附带 `X-Request-Id`
 3. `LoggingMiddleware` 记录请求方法、路径、状态码、耗时（JSON 格式，含 request_id）
 4. `CORSMiddleware` 处理跨域
-5. 路由匹配至 `api/v1/endpoints/` 下的具体 endpoint
-6. endpoint 通过 `deps.py` 注入 Session / CurrentUser / ListParams 等依赖
-7. endpoint 调用 `modules/*/service.py` 处理业务逻辑
-8. service 调用 `modules/*/repository.py` 执行数据访问
-9. 若出现异常，`error_handler.py` 统一捕获并返回 `{"detail": "..."}` JSON 响应
+5. slowapi `RateLimitExceeded` 处理器对超限请求返回 429
+6. 路由匹配至 `api/v1/endpoints/` 下的具体 endpoint
+7. endpoint 通过 `deps.py` 注入 Session / CurrentUser / ListParams 等依赖
+8. endpoint 调用 `modules/*/service.py` 处理业务逻辑
+9. service 调用 `modules/*/repository.py` 执行数据访问，必要时读写 Redis
+10. 若出现异常，`error_handler.py` 统一捕获并返回 `{"detail": "..."}` JSON 响应
 
 ### 模块关系
 
 | 模块 | 职责 |
 |------|------|
-| `auth` | 登录认证、Token 签发/刷新、用户注册、解析当前登录用户 |
+| `auth` | 登录认证、Token 签发/刷新/撤销、用户注册、登出、解析当前登录用户 |
 | `users` | 用户 CRUD、超管创建、用户列表（仅管理员） |
 
 ---
@@ -136,7 +140,7 @@ server-template/
 cp .env.example .env
 # 编辑 .env，至少修改 SECRET_KEY
 
-# 2. 启动数据库 + 开发服务（热重载）
+# 2. 启动数据库 + Redis + 开发服务（热重载）
 docker compose --profile dev up -d
 
 # 3. 执行数据库迁移
@@ -156,13 +160,13 @@ open http://localhost:8000/docs
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2. 安装依赖
-uv sync
+uv sync --extra dev
 
 # 3. 配置环境变量
 cp .env.example .env
 
-# 4. 启动 PostgreSQL（使用 Compose 中的数据库服务）
-docker compose up -d db
+# 4. 启动 PostgreSQL + Redis
+docker compose up -d db redis
 
 # 5. 执行数据库迁移
 uv run alembic upgrade head
@@ -195,8 +199,9 @@ open http://localhost:8000/docs
 | `POSTGRES_USER` | `str` | 无（必填） | PostgreSQL 用户名 |
 | `POSTGRES_PASSWORD` | `str` | 无（必填） | PostgreSQL 密码 |
 | `POSTGRES_DB` | `str` | 无（必填） | PostgreSQL 数据库名 |
+| `REDIS_URL` | `str` | `redis://localhost:6379/0` | Redis 连接 URL，用于 Token 撤销和频率限制 |
 | `BACKEND_CORS_ORIGINS` | `str` | `[]` | 允许的跨域来源，逗号分隔（如 `http://localhost:3000,http://localhost:5173`） |
-| `FIRST_SUPERUSER` | `str` | 无（必填） | 初始超级管理员邮箱 |
+| `FIRST_SUPERUSER` | `str` | 无（必填） | 初始超级管理员用户名 |
 | `FIRST_SUPERUSER_PASSWORD` | `str` | 无（必填） | 初始超级管理员密码（需满足强度要求） |
 | `FIRST_SUPERUSER_FULL_NAME` | `str` | `Admin User` | 初始超级管理员姓名 |
 
@@ -382,18 +387,19 @@ uv run alembic upgrade head
 
 ### Auth 模块 `/api/v1/auth`
 
-| 方法 | 路径 | 说明 | 认证 |
-|------|------|------|------|
-| POST | `/login` | 邮箱密码登录，返回 access + refresh token | 否 |
-| POST | `/refresh` | 用 refresh token 换取新 token 对 | 否 |
-| POST | `/signup` | 注册新用户 | 否 |
+| 方法 | 路径 | 说明 | 认证 | 频率限制 |
+|------|------|------|------|----------|
+| POST | `/login` | 用户名密码登录，返回 access + refresh token | 否 | 5次/分钟/IP |
+| POST | `/refresh` | 用 refresh token 换取新 token 对（旧 token 自动失效） | 否 | 无 |
+| POST | `/logout` | 撤销 refresh token，立即生效 | 否 | 无 |
+| POST | `/signup` | 注册新用户 | 否 | 3次/分钟/IP |
 
 ### Users 模块 `/api/v1/users`
 
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
 | GET | `/me` | 获取当前用户信息 | access token |
-| PUT | `/me` | 更新当前用户信息 | access token |
+| PUT | `/me` | 更新当前用户信息（full_name / password） | access token |
 | GET | `/` | 分页查询用户列表（支持搜索、状态过滤、排序） | 仅超级管理员 |
 
 ### Health `/api/v1/health`
@@ -450,13 +456,15 @@ uv run python scripts/bootstrap_db.py
 
 ### 测试架构
 
-- **框架**：pytest + pytest-asyncio + httpx
+- **框架**：pytest + httpx
 - **数据库**：SQLite 内存库（`StaticPool`），每个测试 fixture 独立创建和销毁
 - **HTTP 客户端**：FastAPI `TestClient`，通过 `dependency_overrides` 注入测试 Session
 - **覆盖层次**：
   - `tests/api/v1/` — 接口层测试（完整 HTTP 请求/响应）
   - `tests/services/` — 服务层测试（业务逻辑）
   - `tests/repositories/` — 仓储层测试（数据访问）
+
+> **注意**：auth 相关测试（login / refresh / logout）依赖 Redis jti 机制，运行前需确保 Redis 可用，或在测试环境中通过 mock 跳过 Redis 调用。
 
 ### 运行测试
 
@@ -514,6 +522,7 @@ docker compose --profile prod up -d
 | 服务 | 说明 | Profile |
 |------|------|---------|
 | `db` | PostgreSQL 16 Alpine，带 healthcheck | 默认启动 |
+| `redis` | Redis 7 Alpine，带 healthcheck，持久化存储 | 默认启动 |
 | `backend-dev` | 开发模式后端 | `dev` |
 | `backend-prod` | 生产模式后端 | `prod` |
 
@@ -525,9 +534,9 @@ docker compose --profile prod up -d
 
 | 层 | 职责 | 禁止 |
 |----|------|------|
-| **Endpoint** | 接收参数、调用 Service、返回响应模型 | 不写业务逻辑、不直接操作数据库 |
-| **Service** | 业务规则、权限校验、事务管理、跨仓储编排 | 不直接操作 HTTP 请求/响应 |
-| **Repository** | 数据查询、过滤、持久化（flush，不 commit） | 不处理权限、不抛 HTTP 异常 |
+| **Endpoint** | 接收参数、调用 Service、返回响应模型 | 不写业务逻辑、不直接操作数据库或 Redis |
+| **Service** | 业务规则、权限校验、事务管理、跨仓储编排、Redis 读写 | 不直接操作 HTTP 请求/响应 |
+| **Repository** | 数据查询、过滤、持久化（flush，不 commit） | 不处理权限、不抛 HTTP 异常、不操作 Redis |
 | **Model** | 数据库表映射 | 不包含业务逻辑 |
 
 ### 事务管理
@@ -535,6 +544,46 @@ docker compose --profile prod up -d
 - Repository 层执行 `session.flush()`（写入但不提交）
 - Service 层通过 `commit_and_refresh(session, instance)` 统一提交
 - 异常时 `commit_and_refresh` 自动回滚
+
+### 认证机制
+
+```mermaid
+sequenceDiagram
+    participant C as 客户端
+    participant A as /auth/login
+    participant R as Redis
+    participant DB as PostgreSQL
+
+    C->>A: POST username + password
+    A->>DB: 查询用户，校验密码
+    A->>R: SET refresh_token:{jti} = user_id（TTL=7天）
+    A-->>C: access_token + refresh_token（含 jti）
+
+    C->>A: POST /auth/refresh（refresh_token）
+    A->>R: EXISTS refresh_token:{jti}
+    R-->>A: 存在
+    A->>R: DEL 旧 jti，SET 新 jti
+    A-->>C: 新 access_token + refresh_token
+
+    C->>A: POST /auth/logout（refresh_token）
+    A->>R: DEL refresh_token:{jti}
+    A-->>C: 204 No Content
+```
+
+- access token：有效期 30 分钟，无状态，无法主动撤销
+- refresh token：有效期 7 天，jti 存储于 Redis，支持主动撤销（登出、账号禁用均即时生效）
+- Token 内嵌 `type` 字段（`access` / `refresh`），解码时强制校验类型，防止混用
+- 接口鉴权通过 `deps.py` 中的 `CurrentUser`（普通用户）和 `CurrentSuperuser`（管理员）依赖注入
+- 用户不存在时仍执行 `DUMMY_HASH` 验证，抹平响应时间差，防止时序攻击枚举用户名
+
+### 频率限制
+
+| 端点 | 限制 | 说明 |
+|------|------|------|
+| `POST /auth/login` | 5次/分钟/IP | 防暴力破解 |
+| `POST /auth/signup` | 3次/分钟/IP | 防批量注册 |
+
+超限返回 `429 Too Many Requests`，计数器存储于 Redis。
 
 ### 异常处理
 
@@ -546,37 +595,11 @@ docker compose --profile prod up -d
 | `AuthException` | 401 | 认证失败 |
 | `PermissionDeniedException` | 403 | 权限不足 |
 | `NotFoundException` | 404 | 资源不存在 |
-| `ConflictException` | 409 | 资源冲突（如邮箱已注册） |
+| `ConflictException` | 409 | 资源冲突（如用户名已注册） |
 | `DatabaseException` | 503 | 数据库异常 |
-
-### 认证机制
-
-- 登录后签发 access token（30 分钟）和 refresh token（7 天）
-- Token 内嵌 `type` 字段（`access` / `refresh`），解码时强制校验类型，防止混用
-- 接口鉴权通过 `deps.py` 中的 `CurrentUser`（普通用户）和 `CurrentSuperuser`（管理员）依赖注入
-- 用户不存在时仍执行 `DUMMY_HASH` 验证，抹平响应时间差，防止时序攻击枚举邮箱
 
 ### 代码规范
 
 - Python 3.12+，遵循 PEP 8
 - 使用 ruff 格式化和 lint（行宽 88）
 - 类型注解使用 Python 3.10+ 语法（`str | None` 而非 `Optional[str]`）
-
----
-
-## 待演进方向
-
-以下为模板当前未覆盖但业务扩展时建议关注的方向：
-
-| 方向 | 说明 |
-|------|------|
-| **RBAC 权限模型** | 当前仅 `is_superuser` 布尔值，复杂业务需引入角色/权限表 |
-| **速率限制** | 生产环境建议引入 `slowapi` 或在网关层实现 |
-| **异步支持** | 当前为全同步设计（SQLModel 同步 Session），I/O 密集场景可切换至 async |
-| **缓存层** | Redis 缓存热点数据、Session 存储 |
-| **文件存储** | OSS / S3 文件上传 |
-| **消息队列** | Celery / RQ 异步任务处理 |
-| **OAuth / SSO** | 第三方登录集成 |
-| **多租户** | 租户隔离策略 |
-| **API 版本管理** | 当前已预留 v1 前缀，后续新版本可并行部署 |
-| **deps.py 拆分** | 模块增多时，将 `deps.py` 按职责拆分为多个文件 |
