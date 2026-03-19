@@ -1,20 +1,28 @@
-from fastapi import APIRouter, Depends
-from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 
+from fastapi import APIRouter, Depends, Request
+from fastapi.security import OAuth2PasswordRequestForm
+
+from app.api.deps import SessionDep
 from app.api.docs import (
     CONFLICT_RESPONSE,
     UNAUTHORIZED_RESPONSE,
     UNPROCESSABLE_ENTITY_RESPONSE,
 )
-from app.api.deps import SessionDep
+from app.core.limiter import limiter
 from app.modules.auth.schemas import RefreshTokenRequest, Token
-from app.modules.auth.service import authenticate_user, create_user_token, refresh_user_token
+from app.modules.auth.service import (
+    authenticate_user,
+    create_user_token,
+    logout_user,
+    refresh_user_token,
+)
 from app.modules.users.schemas import UserCreate, UserResponse
 from app.modules.users.service import create_user
 from app.utils.exceptions import AuthException
 
 router = APIRouter()
+
 
 @router.post(
     "/login",
@@ -38,11 +46,12 @@ router = APIRouter()
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def login(session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+@limiter.limit("5/minute")
+async def login(request: Request, session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = authenticate_user(session, form_data.username, form_data.password)
     if not user:
         raise AuthException("Incorrect username or password")
-    tokens = create_user_token(user.id)
+    tokens = await create_user_token(user.id)
     return Token(**tokens)
 
 
@@ -68,9 +77,25 @@ def login(session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, D
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def refresh_access_token(session: SessionDep, request: RefreshTokenRequest):
-    tokens = refresh_user_token(session, request.refresh_token)
+async def refresh_access_token(session: SessionDep, request: RefreshTokenRequest):
+    tokens = await refresh_user_token(session, request.refresh_token)
     return Token(**tokens)
+
+
+@router.post(
+    "/logout",
+    status_code=204,
+    summary="Logout",
+    description="Revoke the provided refresh token so it can no longer be used.",
+    responses={
+        204: {"description": "Logout succeeded."},
+        401: UNAUTHORIZED_RESPONSE,
+        422: UNPROCESSABLE_ENTITY_RESPONSE,
+    },
+)
+async def logout(request: RefreshTokenRequest):
+    await logout_user(request.refresh_token)
+
 
 @router.post(
     "/signup",
@@ -97,5 +122,6 @@ def refresh_access_token(session: SessionDep, request: RefreshTokenRequest):
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def signup(session: SessionDep, user_in: UserCreate):
+@limiter.limit("3/minute")
+def signup(request: Request, session: SessionDep, user_in: UserCreate):
     return create_user(session, user_in)

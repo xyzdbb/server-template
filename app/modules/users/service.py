@@ -8,7 +8,7 @@ from app.modules.users.schemas import UserCreate, UserListParams, UserUpdate
 from app.utils.exceptions import ConflictException, ValidationException
 
 
-def create_user(session: Session, user_in: UserCreate) -> User:
+def _validate_and_build_user_data(session: Session, user_in: UserCreate) -> dict:
     existing = user_repository.get_by_username(session, user_in.username)
     if existing:
         raise ConflictException("Username already registered")
@@ -19,15 +19,19 @@ def create_user(session: Session, user_in: UserCreate) -> User:
 
     user_data = user_in.model_dump()
     user_data["hashed_password"] = get_password_hash(user_data.pop("password"))
+    return user_data
 
+
+def create_user(session: Session, user_in: UserCreate) -> User:
+    user_data = _validate_and_build_user_data(session, user_in)
     user = user_repository.create(session, user_data)
     return commit_and_refresh(session, user)
 
 
 def create_superuser(session: Session, user_in: UserCreate) -> User:
-    user = create_user(session, user_in)
-    user.is_superuser = True
-    session.add(user)
+    user_data = _validate_and_build_user_data(session, user_in)
+    user_data["is_superuser"] = True
+    user = user_repository.create(session, user_data)
     return commit_and_refresh(session, user)
 
 

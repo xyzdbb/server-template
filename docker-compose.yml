@@ -16,6 +16,19 @@ services:
       retries: 5
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   backend-dev:
     build:
       context: .
@@ -34,10 +47,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changethis}
       SECRET_KEY: ${SECRET_KEY}
       ENVIRONMENT: development
+      REDIS_URL: redis://redis:6379/0
       FIRST_SUPERUSER: ${FIRST_SUPERUSER:-admin@example.com}
       FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD:-changethis}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     profiles: ["dev"]
 
@@ -55,10 +71,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       SECRET_KEY: ${SECRET_KEY}
       ENVIRONMENT: production
+      REDIS_URL: redis://redis:6379/0
       FIRST_SUPERUSER: ${FIRST_SUPERUSER}
       FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: always
     healthcheck:
@@ -70,3 +89,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

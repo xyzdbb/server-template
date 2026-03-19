@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from uuid import uuid4
 
 import bcrypt
 import jwt
@@ -26,10 +27,13 @@ def create_access_token(subject: str | Any, expires_delta: timedelta | None = No
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_refresh_token(subject: str | Any) -> str:
+def create_refresh_token(subject: str | Any) -> tuple[str, str]:
+    """返回 (token, jti)，调用方需将 jti 存入 Redis"""
+    jti = uuid4().hex
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
-    to_encode = {"exp": expire, "sub": str(subject), "type": "refresh"}
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    to_encode = {"exp": expire, "sub": str(subject), "type": "refresh", "jti": jti}
+    token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return token, jti
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

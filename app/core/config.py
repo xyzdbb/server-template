@@ -32,7 +32,9 @@ class Settings(BaseSettings):
             f"postgresql+psycopg://{user}:{password}"
             f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
-    
+
+    REDIS_URL: str = "redis://localhost:6379/0"
+
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
     
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
