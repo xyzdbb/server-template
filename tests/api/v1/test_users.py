@@ -9,11 +9,11 @@ from app.modules.users.repository import user_repository
 def user_auth_headers(client: TestClient) -> dict:
     client.post(
         "/api/v1/auth/signup",
-        json={"email": "me@example.com", "password": "Test1234", "full_name": "Me"},
+        json={"username": "meuser", "password": "Test1234", "full_name": "Me"},
     )
     login = client.post(
         "/api/v1/auth/login",
-        data={"username": "me@example.com", "password": "Test1234"},
+        data={"username": "meuser", "password": "Test1234"},
     )
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
@@ -35,10 +35,9 @@ def test_update_user_me_password(client: TestClient, user_auth_headers: dict):
         headers=user_auth_headers,
     )
     assert response.status_code == 200
-    # 用新密码能登录
     login = client.post(
         "/api/v1/auth/login",
-        data={"username": "me@example.com", "password": "NewPass1234"},
+        data={"username": "meuser", "password": "NewPass1234"},
     )
     assert login.status_code == 200
 
@@ -63,14 +62,14 @@ def test_read_users_returns_paginated_response_for_superuser(
 ):
     client.post(
         "/api/v1/auth/signup",
-        json={"email": "admin@example.com", "password": "Test1234", "full_name": "Admin"},
+        json={"username": "adminuser", "password": "Test1234", "full_name": "Admin"},
     )
     client.post(
         "/api/v1/auth/signup",
-        json={"email": "user@example.com", "password": "Test1234", "full_name": "User"},
+        json={"username": "regularuser", "password": "Test1234", "full_name": "User"},
     )
 
-    admin = user_repository.get_by_email(session, "admin@example.com")
+    admin = user_repository.get_by_username(session, "adminuser")
     assert admin is not None
     admin.is_superuser = True
     session.add(admin)
@@ -78,12 +77,12 @@ def test_read_users_returns_paginated_response_for_superuser(
 
     login_response = client.post(
         "/api/v1/auth/login",
-        data={"username": "admin@example.com", "password": "Test1234"},
+        data={"username": "adminuser", "password": "Test1234"},
     )
     access_token = login_response.json()["access_token"]
 
     response = client.get(
-        "/api/v1/users/?skip=0&limit=10&sort_by=email&sort_order=asc",
+        "/api/v1/users/?skip=0&limit=10&sort_by=username&sort_order=asc",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
@@ -92,8 +91,8 @@ def test_read_users_returns_paginated_response_for_superuser(
     assert response.json()["skip"] == 0
     assert response.json()["limit"] == 10
     assert len(response.json()["items"]) == 2
-    assert response.json()["items"][0]["email"] == "admin@example.com"
-    assert response.json()["items"][1]["email"] == "user@example.com"
+    assert response.json()["items"][0]["username"] == "adminuser"
+    assert response.json()["items"][1]["username"] == "regularuser"
 
 
 def test_read_users_rejects_limit_above_max(
@@ -102,10 +101,10 @@ def test_read_users_rejects_limit_above_max(
 ):
     client.post(
         "/api/v1/auth/signup",
-        json={"email": "admin-limit@example.com", "password": "Test1234", "full_name": "Admin"},
+        json={"username": "adminlimit", "password": "Test1234", "full_name": "Admin"},
     )
 
-    admin = user_repository.get_by_email(session, "admin-limit@example.com")
+    admin = user_repository.get_by_username(session, "adminlimit")
     assert admin is not None
     admin.is_superuser = True
     session.add(admin)
@@ -113,7 +112,7 @@ def test_read_users_rejects_limit_above_max(
 
     login_response = client.post(
         "/api/v1/auth/login",
-        data={"username": "admin-limit@example.com", "password": "Test1234"},
+        data={"username": "adminlimit", "password": "Test1234"},
     )
     access_token = login_response.json()["access_token"]
 
@@ -131,14 +130,14 @@ def test_read_users_supports_search(
 ):
     client.post(
         "/api/v1/auth/signup",
-        json={"email": "search-admin@example.com", "password": "Test1234", "full_name": "Search Admin"},
+        json={"username": "searchadmin", "password": "Test1234", "full_name": "Search Admin"},
     )
     client.post(
         "/api/v1/auth/signup",
-        json={"email": "member@example.com", "password": "Test1234", "full_name": "Regular Member"},
+        json={"username": "memberuser", "password": "Test1234", "full_name": "Regular Member"},
     )
 
-    admin = user_repository.get_by_email(session, "search-admin@example.com")
+    admin = user_repository.get_by_username(session, "searchadmin")
     assert admin is not None
     admin.is_superuser = True
     session.add(admin)
@@ -146,7 +145,7 @@ def test_read_users_supports_search(
 
     login_response = client.post(
         "/api/v1/auth/login",
-        data={"username": "search-admin@example.com", "password": "Test1234"},
+        data={"username": "searchadmin", "password": "Test1234"},
     )
     access_token = login_response.json()["access_token"]
 
@@ -158,7 +157,7 @@ def test_read_users_supports_search(
     assert response.status_code == 200
     assert response.json()["total"] == 1
     assert len(response.json()["items"]) == 1
-    assert response.json()["items"][0]["email"] == "member@example.com"
+    assert response.json()["items"][0]["username"] == "memberuser"
 
 
 def test_read_users_supports_boolean_filters(
@@ -167,15 +166,15 @@ def test_read_users_supports_boolean_filters(
 ):
     client.post(
         "/api/v1/auth/signup",
-        json={"email": "filter-admin@example.com", "password": "Test1234", "full_name": "Filter Admin"},
+        json={"username": "filteradmin", "password": "Test1234", "full_name": "Filter Admin"},
     )
     client.post(
         "/api/v1/auth/signup",
-        json={"email": "inactive@example.com", "password": "Test1234", "full_name": "Inactive User"},
+        json={"username": "inactiveuser", "password": "Test1234", "full_name": "Inactive User"},
     )
 
-    admin = user_repository.get_by_email(session, "filter-admin@example.com")
-    inactive_user = user_repository.get_by_email(session, "inactive@example.com")
+    admin = user_repository.get_by_username(session, "filteradmin")
+    inactive_user = user_repository.get_by_username(session, "inactiveuser")
     assert admin is not None
     assert inactive_user is not None
 
@@ -187,7 +186,7 @@ def test_read_users_supports_boolean_filters(
 
     login_response = client.post(
         "/api/v1/auth/login",
-        data={"username": "filter-admin@example.com", "password": "Test1234"},
+        data={"username": "filteradmin", "password": "Test1234"},
     )
     access_token = login_response.json()["access_token"]
 
@@ -199,4 +198,4 @@ def test_read_users_supports_boolean_filters(
     assert response.status_code == 200
     assert response.json()["total"] == 1
     assert len(response.json()["items"]) == 1
-    assert response.json()["items"][0]["email"] == "inactive@example.com"
+    assert response.json()["items"][0]["username"] == "inactiveuser"

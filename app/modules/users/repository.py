@@ -16,7 +16,7 @@ class UserRepository(RepositoryBase[User]):
         if search:
             search_term = f"%{search.strip()}%"
             statement = statement.where(
-                User.email.ilike(search_term) | User.full_name.ilike(search_term)
+                User.username.ilike(search_term) | User.full_name.ilike(search_term)
             )
         if is_active is not None:
             statement = statement.where(User.is_active.is_(is_active))
@@ -62,9 +62,9 @@ class UserRepository(RepositoryBase[User]):
         items = list(session.exec(statement).all())
         return items, total
 
-    def get_by_email(self, session: Session, email: str) -> User | None:
+    def get_by_username(self, session: Session, username: str) -> User | None:
         statement = select(User).where(
-            User.email == email,
+            User.username == username,
             User.deleted_at.is_(None),
         )
         return session.exec(statement).first()

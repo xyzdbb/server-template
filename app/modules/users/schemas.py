@@ -1,12 +1,12 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import PaginationParams, SortOrder
 
 
 class UserBase(BaseModel):
-    email: EmailStr = Field(examples=["user@example.com"])
+    username: str = Field(min_length=1, max_length=255, examples=["johndoe"])
     full_name: str | None = Field(default=None, examples=["Jane Doe"])
 
 
@@ -16,7 +16,6 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """所有字段均为可选，仅更新显式传入的字段。"""
-    email: EmailStr | None = Field(default=None, examples=["new@example.com"])
     full_name: str | None = Field(default=None, examples=["Jane Doe"])
     password: str | None = Field(
         default=None,
@@ -35,7 +34,7 @@ class UserResponse(UserBase):
 
 
 class UserListParams(PaginationParams):
-    sort_by: Literal["created_at", "updated_at", "email"] = "created_at"
+    sort_by: Literal["created_at", "updated_at", "username"] = "created_at"
     sort_order: SortOrder = "desc"
     search: str | None = Field(default=None, max_length=255)
     is_active: bool | None = None

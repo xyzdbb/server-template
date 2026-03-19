@@ -23,14 +23,14 @@ def get_user_list_params(
     limit: int = Query(default=100, ge=1, le=100, description="Maximum number of records to return."),
     sort_by: str = Query(
         default="created_at",
-        pattern="^(created_at|updated_at|email)$",
+        pattern="^(created_at|updated_at|username)$",
         description="Field used to sort the user list.",
     ),
     sort_order: SortOrder = Query(default="desc", description="Sort direction."),
     search: str | None = Query(
         default=None,
         max_length=255,
-        description="Case-insensitive match against user email and full name.",
+        description="Case-insensitive match against username and full name.",
     ),
     is_active: bool | None = Query(default=None, description="Filter users by active status."),
     is_superuser: bool | None = Query(default=None, description="Filter users by superuser status."),

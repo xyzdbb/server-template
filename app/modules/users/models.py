@@ -4,7 +4,7 @@ from app.models.base import TableBase
 
 
 class User(TableBase, table=True):
-    email: str = Field(unique=True, index=True, max_length=255)
+    username: str = Field(unique=True, index=True, max_length=255)
     hashed_password: str = Field(max_length=255)
     full_name: str | None = Field(default=None, max_length=255)
     is_active: bool = Field(default=True)

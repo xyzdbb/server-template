@@ -12,7 +12,7 @@ class Message(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str = Field(
-        examples=["Incorrect email or password"],
+        examples=["Incorrect username or password"],
         description="Human-readable error description.",
     )
 

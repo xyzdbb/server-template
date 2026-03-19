@@ -20,7 +20,7 @@ router = APIRouter()
     "/login",
     response_model=Token,
     summary="Login",
-    description="Authenticate a user with email and password form data, then issue access and refresh tokens.",
+    description="Authenticate a user with username and password form data, then issue access and refresh tokens.",
     responses={
         200: {
             "description": "Authentication succeeded.",
@@ -41,7 +41,7 @@ router = APIRouter()
 def login(session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = authenticate_user(session, form_data.username, form_data.password)
     if not user:
-        raise AuthException("Incorrect email or password")
+        raise AuthException("Incorrect username or password")
     tokens = create_user_token(user.id)
     return Token(**tokens)
 
@@ -85,7 +85,7 @@ def refresh_access_token(session: SessionDep, request: RefreshTokenRequest):
                 "application/json": {
                     "example": {
                         "id": 1,
-                        "email": "user@example.com",
+                        "username": "johndoe",
                         "full_name": "Jane Doe",
                         "is_active": True,
                         "is_superuser": False,

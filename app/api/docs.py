@@ -38,7 +38,7 @@ BAD_REQUEST_RESPONSE = {
             "examples": {
                 "invalid_credentials": {
                     "summary": "Invalid login credentials",
-                    "value": {"detail": "Incorrect email or password"},
+                    "value": {"detail": "Incorrect username or password"},
                 },
                 "inactive_user": {
                     "summary": "Inactive user",
@@ -72,7 +72,7 @@ CONFLICT_RESPONSE = {
     "description": "Requested operation conflicts with current resource state.",
     "content": {
         "application/json": {
-            "example": {"detail": "Email already registered"},
+            "example": {"detail": "Username already registered"},
         }
     },
 }

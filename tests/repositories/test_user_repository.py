@@ -3,36 +3,36 @@ from sqlmodel import Session
 from app.modules.users.repository import user_repository
 
 
-def _make_user(session: Session, email: str) -> dict:
-    data = {"email": email, "hashed_password": "hashed", "full_name": "Test"}
+def _make_user(session: Session, username: str) -> dict:
+    data = {"username": username, "hashed_password": "hashed", "full_name": "Test"}
     return user_repository.create(session, data)
 
 
 def test_create_user(session: Session):
-    user = _make_user(session, "test@example.com")
+    user = _make_user(session, "testuser")
     session.commit()
-    assert user.email == "test@example.com"
+    assert user.username == "testuser"
     assert user.id is not None
 
 
-def test_get_by_email(session: Session):
-    _make_user(session, "test@example.com")
+def test_get_by_username(session: Session):
+    _make_user(session, "testuser")
     session.commit()
-    user = user_repository.get_by_email(session, "test@example.com")
+    user = user_repository.get_by_username(session, "testuser")
     assert user is not None
-    assert user.email == "test@example.com"
+    assert user.username == "testuser"
 
 
 def test_get_multi(session: Session):
-    _make_user(session, "a@example.com")
-    _make_user(session, "b@example.com")
+    _make_user(session, "userA")
+    _make_user(session, "userB")
     session.commit()
     users = user_repository.get_multi(session, skip=0, limit=10)
     assert len(users) == 2
 
 
 def test_soft_delete(session: Session):
-    user = _make_user(session, "del@example.com")
+    user = _make_user(session, "deluser")
     session.commit()
 
     deleted = user_repository.soft_delete(session, user.id)
@@ -41,20 +41,19 @@ def test_soft_delete(session: Session):
     assert deleted is not None
     assert deleted.deleted_at is not None
 
-    # 软删除后 get 应返回 None
     fetched = user_repository.get(session, user.id)
     assert fetched is None
 
 
 def test_soft_delete_excluded_from_get_multi(session: Session):
-    user = _make_user(session, "active@example.com")
-    deleted_user = _make_user(session, "deleted@example.com")
+    user = _make_user(session, "activeuser")
+    deleted_user = _make_user(session, "deleteduser")
     session.commit()
 
     user_repository.soft_delete(session, deleted_user.id)
     session.commit()
 
     users = user_repository.get_multi(session)
-    emails = [u.email for u in users]
-    assert "active@example.com" in emails
-    assert "deleted@example.com" not in emails
+    usernames = [u.username for u in users]
+    assert "activeuser" in usernames
+    assert "deleteduser" not in usernames

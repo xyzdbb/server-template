@@ -9,9 +9,9 @@ from app.utils.exceptions import ConflictException, ValidationException
 
 
 def create_user(session: Session, user_in: UserCreate) -> User:
-    existing = user_repository.get_by_email(session, user_in.email)
+    existing = user_repository.get_by_username(session, user_in.username)
     if existing:
-        raise ConflictException("Email already registered")
+        raise ConflictException("Username already registered")
 
     is_valid, error_msg = validate_password_strength(user_in.password)
     if not is_valid:
