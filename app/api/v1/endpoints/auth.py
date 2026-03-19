@@ -77,8 +77,9 @@ async def login(request: Request, session: SessionDep, form_data: Annotated[OAut
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-async def refresh_access_token(session: SessionDep, request: RefreshTokenRequest):
-    tokens = await refresh_user_token(session, request.refresh_token)
+@limiter.limit("20/minute")
+async def refresh_access_token(request: Request, session: SessionDep, body: RefreshTokenRequest):
+    tokens = await refresh_user_token(session, body.refresh_token)
     return Token(**tokens)
 
 

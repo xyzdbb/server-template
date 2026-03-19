@@ -11,6 +11,7 @@ os.environ.setdefault("POSTGRES_SERVER", "localhost")
 os.environ.setdefault("POSTGRES_USER", "postgres")
 os.environ.setdefault("POSTGRES_PASSWORD", "postgres")
 os.environ.setdefault("POSTGRES_DB", "app")
+os.environ.setdefault("REDIS_URL", "memory://")
 os.environ.setdefault("FIRST_SUPERUSER", "admin@example.com")
 os.environ.setdefault("FIRST_SUPERUSER_PASSWORD", "Admin1234")
 
