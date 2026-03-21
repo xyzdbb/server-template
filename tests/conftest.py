@@ -16,6 +16,7 @@ os.environ.setdefault("REDIS_URL", "memory://")
 os.environ.setdefault("FIRST_SUPERUSER", "admin@example.com")
 os.environ.setdefault("FIRST_SUPERUSER_PASSWORD", "Admin1234")
 
+from app.core.database import reset_engine
 from app.core.limiter import limiter
 from app.main import app
 from app.api.deps import get_session
@@ -56,6 +57,13 @@ def _disable_rate_limit():
     limiter.enabled = False
     yield
     limiter.enabled = True
+
+
+@pytest.fixture(autouse=True)
+def _reset_db_engine():
+    """Ensure production engine cache is cleared between tests."""
+    yield
+    reset_engine()
 
 
 @pytest.fixture(name="session")

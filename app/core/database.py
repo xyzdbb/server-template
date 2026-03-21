@@ -1,5 +1,3 @@
-from functools import lru_cache
-
 from sqlalchemy import text
 from sqlalchemy.pool import NullPool, QueuePool
 from sqlmodel import Session, create_engine
@@ -7,6 +5,8 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 from app.core.logging import logger
+
+_engine = None
 
 
 def _build_engine_kwargs() -> dict:
@@ -29,9 +29,22 @@ def _build_engine_kwargs() -> dict:
     return kwargs
 
 
-@lru_cache
 def get_engine():
-    return create_engine(settings.DATABASE_URL, **_build_engine_kwargs())
+    global _engine
+    if _engine is None:
+        _engine = create_engine(settings.DATABASE_URL, **_build_engine_kwargs())
+    return _engine
+
+
+def reset_engine():
+    """Dispose the cached engine and clear the reference.
+
+    Call this in test teardown or when settings change to force re-creation.
+    """
+    global _engine
+    if _engine is not None:
+        _engine.dispose()
+        _engine = None
 
 
 def get_session():

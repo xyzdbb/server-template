@@ -28,6 +28,23 @@ class RepositoryBase(Generic[ModelType]):
         count_statement = select(func.count()).select_from(subquery)
         return int(session.exec(count_statement).one())
 
+    def _execute_with_count(
+        self,
+        session: Session,
+        statement,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> tuple[list[ModelType], int]:
+        """Single-query pagination via COUNT(*) OVER() window function."""
+        total_col = func.count().over().label("_total_count")
+        windowed = statement.add_columns(total_col).offset(skip).limit(limit)
+        rows = session.execute(windowed).all()
+        if not rows:
+            return [], 0
+        items = [row[0] for row in rows]
+        total: int = rows[0][-1]
+        return items, total
+
     def get(self, session: Session, id: int) -> ModelType | None:
         try:
             statement = select(self.model).where(
