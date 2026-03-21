@@ -56,8 +56,10 @@ class UserRepository(RepositoryBase[User]):
         base = self._build_filtered_statement(
             search=search, is_active=is_active, is_superuser=is_superuser
         )
+        total = self._count_statement(session, base)
         statement = self._apply_sort(base, sort_by=sort_by, sort_order=sort_order)
-        return self._execute_with_count(session, statement, skip, limit)
+        statement = statement.offset(skip).limit(limit)
+        return list(session.exec(statement).all()), total
 
     def get_by_username(self, session: Session, username: str) -> User | None:
         statement = select(User).where(
