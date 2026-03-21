@@ -37,3 +37,5 @@ class Page(BaseModel, Generic[T]):
 class PaginationParams(BaseModel):
     skip: int = Field(default=0, ge=0)
     limit: int = Field(default=100, ge=1, le=100)
+    sort_by: str = "created_at"
+    sort_order: SortOrder = "desc"

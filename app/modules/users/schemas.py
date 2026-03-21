@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.common import PaginationParams, SortOrder
+from app.schemas.common import PaginationParams
 
 
 class UserBase(BaseModel):
@@ -33,9 +33,11 @@ class UserResponse(UserBase):
     is_superuser: bool = Field(examples=[False])
 
 
+UserSortField = Literal["created_at", "updated_at", "username"]
+
+
 class UserListParams(PaginationParams):
-    sort_by: Literal["created_at", "updated_at", "username"] = "created_at"
-    sort_order: SortOrder = "desc"
+    sort_by: UserSortField = "created_at"
     search: str | None = Field(default=None, max_length=255)
     is_active: bool | None = None
     is_superuser: bool | None = None

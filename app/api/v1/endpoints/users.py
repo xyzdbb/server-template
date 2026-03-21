@@ -6,7 +6,8 @@ from app.api.docs import (
     UNAUTHORIZED_RESPONSE,
     UNPROCESSABLE_ENTITY_RESPONSE,
 )
-from app.api.deps import CurrentSuperuser, CurrentUser, SessionDep, UserListDep
+from app.api.deps import CurrentSuperuser, CurrentUser, SessionDep
+from app.modules.users.deps import UserListDep
 from app.modules.users.schemas import UserResponse, UserUpdate
 from app.modules.users.service import list_users_with_count, update_user
 from app.schemas.common import Page

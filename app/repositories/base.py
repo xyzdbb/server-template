@@ -109,7 +109,6 @@ class RepositoryBase(Generic[ModelType]):
         try:
             for field, value in obj_in.items():
                 setattr(db_obj, field, value)
-            db_obj.updated_at = datetime.now(UTC)
             session.add(db_obj)
             session.flush()
             return db_obj
