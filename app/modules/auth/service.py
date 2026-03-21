@@ -78,13 +78,17 @@ def refresh_user_token(session: Session, refresh_token: str) -> dict[str, str]:
     return create_user_token(user.id)
 
 
-def logout_user(refresh_token: str) -> None:
-    """撤销 refresh token，使其不可再用于刷新"""
+def logout_user(refresh_token: str, current_user_id: int) -> None:
+    """撤销 refresh token，使其不可再用于刷新；校验 token 归属当前用户"""
     try:
         payload = decode_token(refresh_token, expected_type="refresh")
+        token_user_id = int(payload.get("sub"))
         jti = payload.get("jti")
     except (InvalidTokenError, TypeError, ValueError) as exc:
         raise AuthException("Invalid refresh token") from exc
+
+    if token_user_id != current_user_id:
+        raise AuthException("Refresh token does not belong to the current user")
 
     if jti:
         _revoke_refresh_jti(jti)

@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.api.deps import SessionDep
+from app.api.deps import CurrentUser, SessionDep
 from app.api.docs import (
     CONFLICT_RESPONSE,
     UNAUTHORIZED_RESPONSE,
@@ -94,8 +94,8 @@ def refresh_access_token(request: Request, session: SessionDep, body: RefreshTok
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def logout(request: RefreshTokenRequest):
-    logout_user(request.refresh_token)
+def logout(request: RefreshTokenRequest, current_user: CurrentUser):
+    logout_user(request.refresh_token, current_user.id)
 
 
 @router.post(
