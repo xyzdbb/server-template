@@ -14,6 +14,8 @@ ModelType = TypeVar("ModelType", bound=TableBase)
 
 
 class RepositoryBase(Generic[ModelType]):
+    _protected_fields: frozenset[str] = frozenset({"id", "created_at", "updated_at", "deleted_at"})
+
     def __init__(self, model: Type[ModelType]):
         self.model = model
 
@@ -48,16 +50,9 @@ class RepositoryBase(Generic[ModelType]):
         sort_order: SortOrder = "desc",
     ) -> list[ModelType]:
         try:
-            statement = self._apply_sort(
-                (
-                select(self.model)
-                .where(self.model.deleted_at.is_(None))
-                .offset(skip)
-                .limit(limit)
-                ),
-                sort_by=sort_by,
-                sort_order=sort_order,
-            )
+            statement = select(self.model).where(self.model.deleted_at.is_(None))
+            statement = self._apply_sort(statement, sort_by=sort_by, sort_order=sort_order)
+            statement = statement.offset(skip).limit(limit)
             return list(session.exec(statement).all())
         except SQLAlchemyError as exc:
             logger.error(f"Error getting multiple {self.model.__name__}: {exc}")
@@ -91,7 +86,8 @@ class RepositoryBase(Generic[ModelType]):
     ) -> ModelType:
         try:
             for field, value in obj_in.items():
-                setattr(db_obj, field, value)
+                if field not in self._protected_fields:
+                    setattr(db_obj, field, value)
             session.add(db_obj)
             session.flush()
             return db_obj

@@ -4,23 +4,20 @@ from sqlmodel import Session, create_engine
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
-from app.core.logging import logger
 
 _engine = None
 
 
 def _build_engine_kwargs() -> dict:
-    kwargs: dict = {
-        "echo": not settings.IS_PRODUCTION,
-        "pool_pre_ping": True,
-        "pool_recycle": 3600,
-    }
+    kwargs: dict = {"echo": not settings.IS_PRODUCTION}
     if settings.ENVIRONMENT == "test":
         kwargs["poolclass"] = NullPool
     else:
         kwargs.update(
             {
                 "poolclass": QueuePool,
+                "pool_pre_ping": True,
+                "pool_recycle": 3600,
                 "pool_size": 5,
                 "max_overflow": 10,
                 "pool_timeout": 30,
@@ -48,12 +45,8 @@ def reset_engine():
 
 
 def get_session():
-    try:
-        with Session(get_engine()) as session:
-            yield session
-    except Exception as e:
-        logger.error(f"Database session error: {e}")
-        raise
+    with Session(get_engine()) as session:
+        yield session
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))

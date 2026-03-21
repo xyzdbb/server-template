@@ -12,7 +12,7 @@ from app.core.security import (
 )
 from app.modules.users.models import User
 from app.modules.users.repository import user_repository
-from app.utils.exceptions import AuthException, ValidationException
+from app.utils.exceptions import AuthException
 
 REFRESH_TOKEN_KEY_PREFIX = "refresh_token:"
 REFRESH_TOKEN_TTL_SECONDS = settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60
@@ -70,6 +70,8 @@ def refresh_user_token(session: Session, refresh_token: str) -> dict[str, str]:
 
     user = user_repository.get(session, user_id)
     if not user or not user.is_active:
+        if old_jti:
+            _revoke_refresh_jti(old_jti)
         raise AuthException("Invalid refresh token")
 
     if old_jti:
@@ -105,5 +107,5 @@ def get_current_active_user(session: Session, token: str) -> User:
     if not user:
         raise AuthException("Could not validate credentials")
     if not user.is_active:
-        raise ValidationException("Inactive user")
+        raise AuthException("Inactive user")
     return user

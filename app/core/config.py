@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import List, Literal
 from urllib.parse import quote_plus
 
-from pydantic import AnyHttpUrl, Field, computed_field, field_validator
+from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     TRUSTED_HOSTS: List[str] = ["127.0.0.1"]
 
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    BACKEND_CORS_ORIGINS: List[str] = []
 
     @field_validator("TRUSTED_HOSTS", "BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -45,6 +45,14 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [i.strip() for i in v.split(",")]
         return v
+
+    @field_validator("BACKEND_CORS_ORIGINS")
+    @classmethod
+    def validate_cors_origins(cls, v: List[str]) -> List[str]:
+        for origin in v:
+            if origin != "*" and not origin.startswith(("http://", "https://")):
+                raise ValueError(f"Invalid CORS origin: {origin!r}, must start with http:// or https://")
+        return [origin.rstrip("/") for origin in v]
     
     FIRST_SUPERUSER: str
     FIRST_SUPERUSER_PASSWORD: str

@@ -13,6 +13,7 @@ from app.api.v1.router import api_router
 from app.middleware.error_handler import register_exception_handlers
 from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.logging import LoggingMiddleware
+from app.middleware.security import SecurityHeadersMiddleware
 
 
 @asynccontextmanager
@@ -39,8 +40,10 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-# Starlette 中间件后注册先执行，实际顺序: RequestID → Logging → ProxyHeaders → CORS
+# Starlette 中间件后注册先执行
+# 实际顺序: RequestID → Logging → SecurityHeaders → ProxyHeaders → CORS
 app.add_middleware(LoggingMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=settings.TRUSTED_HOSTS)
 

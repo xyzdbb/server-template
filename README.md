@@ -202,7 +202,7 @@ open http://localhost:8000/docs
 | `POSTGRES_PASSWORD` | `str` | 无（必填） | PostgreSQL 密码 |
 | `POSTGRES_DB` | `str` | 无（必填） | PostgreSQL 数据库名 |
 | `REDIS_URL` | `str` | `redis://localhost:6379/0` | Redis 连接 URL，用于 Token 撤销和频率限制 |
-| `TRUSTED_HOSTS` | `str` | `127.0.0.1` | 可信反向代理 IP，逗号分隔，用于解析 `X-Forwarded-For` |
+| `TRUSTED_HOSTS` | `str` | `127.0.0.1` | 可信反向代理 IP，逗号分隔，用于 `ProxyHeadersMiddleware` 解析 `X-Forwarded-For` 中的真实客户端 IP。**此配置直接影响 slowapi 频率限制的 IP 识别**：若未正确设置，限流可能按代理 IP 计数（所有用户共享配额）或被恶意伪造 `X-Forwarded-For` 绕过 |
 | `BACKEND_CORS_ORIGINS` | `str` | `[]` | 允许的跨域来源，逗号分隔（如 `http://localhost:3000,http://localhost:5173`） |
 | `FIRST_SUPERUSER` | `str` | 无（必填） | 初始超级管理员用户名 |
 | `FIRST_SUPERUSER_PASSWORD` | `str` | 无（必填） | 初始超级管理员密码（需满足强度要求） |
@@ -583,6 +583,8 @@ sequenceDiagram
 | `POST /auth/signup` | 3次/分钟/IP | 防批量注册 |
 
 超限返回 `429 Too Many Requests`，计数器存储于 Redis。
+
+> **注意**：slowapi 依赖 `request.client.host` 获取客户端 IP 进行限流。该值由 `ProxyHeadersMiddleware` 根据 `TRUSTED_HOSTS` 配置从 `X-Forwarded-For` 头解析。生产环境部署于反向代理（Nginx / ALB 等）后时，**必须将代理 IP 加入 `TRUSTED_HOSTS`**，否则限流将按代理 IP 计数，导致所有用户共享限流配额。
 
 ### 异常处理
 

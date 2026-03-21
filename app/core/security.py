@@ -52,10 +52,7 @@ def get_password_hash(password: str) -> str:
 
 
 def validate_password_strength(password: str) -> tuple[bool, str]:
-    if len(password) < 8:
-        return False, "Password must be at least 8 characters"
-    if len(password) > 40:
-        return False, "Password must be less than 40 characters"
+    """校验密码字符类别（长度由 Pydantic schema 约束，此处不重复检查）"""
     if not any(c.isupper() for c in password):
         return False, "Password must contain uppercase"
     if not any(c.islower() for c in password):
