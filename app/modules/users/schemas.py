@@ -7,7 +7,7 @@ from app.schemas.common import PaginationParams
 
 class UserBase(BaseModel):
     username: str = Field(min_length=1, max_length=255, examples=["johndoe"])
-    full_name: str | None = Field(default=None, examples=["Jane Doe"])
+    full_name: str | None = Field(default=None, max_length=255, examples=["Jane Doe"])
 
 
 class UserCreate(UserBase):
@@ -16,7 +16,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """所有字段均为可选，仅更新显式传入的字段。"""
-    full_name: str | None = Field(default=None, examples=["Jane Doe"])
+    full_name: str | None = Field(default=None, max_length=255, examples=["Jane Doe"])
     password: str | None = Field(
         default=None,
         min_length=8,

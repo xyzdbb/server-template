@@ -1,7 +1,6 @@
 from sqlalchemy import text
 from sqlalchemy.pool import NullPool, QueuePool
 from sqlmodel import Session, create_engine
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 
@@ -49,14 +48,11 @@ def get_session():
         yield session
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 def check_database_health() -> bool:
+    """单次执行，不做内部重试——重试由外部探针（K8s liveness/readiness）控制。"""
     if settings.ENVIRONMENT == "test":
         return True
 
-    try:
-        with Session(get_engine()) as session:
-            session.execute(text("SELECT 1"))
-            return True
-    except Exception as e:
-        raise Exception(f"Database health check failed: {e}") from e
+    with Session(get_engine()) as session:
+        session.execute(text("SELECT 1"))
+        return True

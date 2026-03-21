@@ -50,7 +50,13 @@ class Settings(BaseSettings):
     @classmethod
     def validate_cors_origins(cls, v: List[str]) -> List[str]:
         for origin in v:
-            if origin != "*" and not origin.startswith(("http://", "https://")):
+            if origin == "*":
+                raise ValueError(
+                    "Wildcard '*' is not allowed in CORS origins "
+                    "because allow_credentials=True (per CORS spec). "
+                    "Please list explicit origins instead."
+                )
+            if not origin.startswith(("http://", "https://")):
                 raise ValueError(f"Invalid CORS origin: {origin!r}, must start with http:// or https://")
         return [origin.rstrip("/") for origin in v]
     

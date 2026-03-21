@@ -2,6 +2,9 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
+# NOTE: Strict-Transport-Security (HSTS) 不在此处设置。
+# HSTS 应由反向代理 / 负载均衡器（Nginx、Cloudflare、ALB 等）统一注入，
+# 避免在开发环境或非 TLS 场景下误启用导致浏览器强制 HTTPS。
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",

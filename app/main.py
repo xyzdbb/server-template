@@ -40,8 +40,8 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-# Starlette 中间件后注册先执行
-# 实际顺序: RequestID → Logging → SecurityHeaders → ProxyHeaders → CORS
+# Starlette 中间件后注册先执行（LIFO）
+# 实际执行顺序: ProxyHeaders → RequestID → SecurityHeaders → Logging → CORS
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIDMiddleware)
