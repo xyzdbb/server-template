@@ -115,7 +115,8 @@ server-template/
 1. 客户端发起 HTTP 请求
 2. `RequestIDMiddleware` 生成 UUID 并写入 `ContextVar`，响应头附带 `X-Request-Id`
 3. `LoggingMiddleware` 记录请求方法、路径、状态码、耗时（JSON 格式，含 request_id）
-4. `CORSMiddleware` 处理跨域
+4. `ProxyHeadersMiddleware` 从可信代理解析 `X-Forwarded-For`，设置真实客户端 IP
+5. `CORSMiddleware` 处理跨域
 5. slowapi `RateLimitExceeded` 处理器对超限请求返回 429
 6. 路由匹配至 `api/v1/endpoints/` 下的具体 endpoint
 7. endpoint 通过 `deps.py` 注入 Session / CurrentUser / ListParams 等依赖
@@ -201,6 +202,7 @@ open http://localhost:8000/docs
 | `POSTGRES_PASSWORD` | `str` | 无（必填） | PostgreSQL 密码 |
 | `POSTGRES_DB` | `str` | 无（必填） | PostgreSQL 数据库名 |
 | `REDIS_URL` | `str` | `redis://localhost:6379/0` | Redis 连接 URL，用于 Token 撤销和频率限制 |
+| `TRUSTED_HOSTS` | `str` | `127.0.0.1` | 可信反向代理 IP，逗号分隔，用于解析 `X-Forwarded-For` |
 | `BACKEND_CORS_ORIGINS` | `str` | `[]` | 允许的跨域来源，逗号分隔（如 `http://localhost:3000,http://localhost:5173`） |
 | `FIRST_SUPERUSER` | `str` | 无（必填） | 初始超级管理员用户名 |
 | `FIRST_SUPERUSER_PASSWORD` | `str` | 无（必填） | 初始超级管理员密码（需满足强度要求） |

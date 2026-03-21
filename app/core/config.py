@@ -35,11 +35,13 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    TRUSTED_HOSTS: List[str] = ["127.0.0.1"]
+
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
-    
-    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+
+    @field_validator("TRUSTED_HOSTS", "BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: str | List[str]) -> List[str]:
+    def split_comma_separated(cls, v: str | List[str]) -> List[str]:
         if isinstance(v, str):
             return [i.strip() for i in v.split(",")]
         return v

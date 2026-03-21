@@ -94,8 +94,8 @@ def refresh_access_token(request: Request, session: SessionDep, body: RefreshTok
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def logout(request: RefreshTokenRequest, current_user: CurrentUser):
-    logout_user(request.refresh_token, current_user.id)
+def logout(body: RefreshTokenRequest, current_user: CurrentUser):
+    logout_user(body.refresh_token, current_user.id)
 
 
 @router.post(

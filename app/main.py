@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.core.config import settings
 from app.core.limiter import limiter
@@ -34,13 +35,14 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
-# Starlette 中间件后注册先执行，实际顺序: RequestID → Logging → CORS
+# Starlette 中间件后注册先执行，实际顺序: RequestID → Logging → ProxyHeaders → CORS
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=settings.TRUSTED_HOSTS)
 
 register_exception_handlers(app)
 
