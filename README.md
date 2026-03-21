@@ -455,7 +455,8 @@ uv run python scripts/bootstrap_db.py
 ### 测试架构
 
 - **框架**：pytest + httpx
-- **数据库**：SQLite 内存库（`StaticPool`），每个测试 fixture 独立创建和销毁
+- **数据库**：testcontainers 自动管理的 PostgreSQL 容器（`postgres:16-alpine`），与生产环境完全一致，每个测试在独立事务内运行并自动回滚
+- **前置条件**：本地或 CI 需运行 Docker 守护进程（首次运行会拉取 `postgres:16-alpine` 镜像，约 80MB）
 - **HTTP 客户端**：FastAPI `TestClient`，通过 `dependency_overrides` 注入测试 Session
 - **Redis**：`FakeRedis` 内存替身（`conftest.py` 中通过 `unittest.mock.patch` 自动注入），无需真实 Redis
 - **频率限制**：测试环境自动禁用（`limiter.enabled = False`），避免跨用例累积导致 429

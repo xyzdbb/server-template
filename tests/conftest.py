@@ -1,11 +1,22 @@
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
-from sqlmodel.pool import StaticPool
 from fastapi.testclient import TestClient
+from testcontainers.postgres import PostgresContainer
 
+# Docker Desktop (macOS/Windows) 的 socket 不在默认路径，自动探测
+if "DOCKER_HOST" not in os.environ:
+    _desktop_sock = Path.home() / ".docker" / "run" / "docker.sock"
+    if _desktop_sock.exists():
+        os.environ["DOCKER_HOST"] = f"unix://{_desktop_sock}"
+
+# 禁用 Ryuk（testcontainers 清理容器），用 context manager 自行管理生命周期
+os.environ.setdefault("TESTCONTAINERS_RYUK_DISABLED", "true")
+
+# settings 初始化所需的环境变量，测试数据库实际由 testcontainers 管理
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-minimum-32-bytes!!")
 os.environ.setdefault("POSTGRES_SERVER", "localhost")
@@ -45,6 +56,21 @@ class FakeRedis:
         return count
 
 
+@pytest.fixture(scope="session")
+def _pg_container():
+    with PostgresContainer("postgres:16-alpine", driver="psycopg") as pg:
+        yield pg
+
+
+@pytest.fixture(scope="session")
+def _engine(_pg_container):
+    engine = create_engine(_pg_container.get_connection_url())
+    SQLModel.metadata.create_all(engine)
+    yield engine
+    SQLModel.metadata.drop_all(engine)
+    engine.dispose()
+
+
 @pytest.fixture(autouse=True)
 def _mock_redis():
     fake = FakeRedis()
@@ -61,22 +87,19 @@ def _disable_rate_limit():
 
 @pytest.fixture(autouse=True)
 def _reset_db_engine():
-    """Ensure production engine cache is cleared between tests."""
     yield
     reset_engine()
 
 
 @pytest.fixture(name="session")
-def session_fixture():
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
-    SQLModel.metadata.drop_all(engine)
+def session_fixture(_engine):
+    conn = _engine.connect()
+    txn = conn.begin()
+    session = Session(bind=conn)
+    yield session
+    session.close()
+    txn.rollback()
+    conn.close()
 
 
 @pytest.fixture(name="client")
