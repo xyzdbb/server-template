@@ -38,12 +38,15 @@
 
 ```mermaid
 flowchart TD
-    Client[客户端] --> Middleware
+    Client[客户端] --> ProxyHeaders
 
-    subgraph middlewareChain [中间件链]
-        Middleware[RequestIDMiddleware]
-        Middleware --> Logging[LoggingMiddleware]
-        Logging --> ErrorHandler[ErrorHandler]
+    subgraph middlewareChain [中间件链（按实际执行顺序）]
+        ProxyHeaders[ProxyHeadersMiddleware]
+        ProxyHeaders --> RequestID[RequestIDMiddleware]
+        RequestID --> Security[SecurityHeadersMiddleware]
+        Security --> Logging[LoggingMiddleware]
+        Logging --> CORS[CORSMiddleware]
+        CORS --> ErrorHandler[ErrorHandler]
     end
 
     ErrorHandler --> Router[api/v1/router.py]
@@ -74,7 +77,7 @@ server-template/
 │   │   ├── docs.py              # OpenAPI 响应模板（401/403/404/409/422）
 │   │   └── v1/
 │   │       ├── router.py        # v1 路由聚合
-│   │       └── endpoints/       # 接口层：auth / users / health
+│   │       └── endpoints/       # 接口层：auth / users / items / health
 │   ├── core/
 │   │   ├── config.py            # 配置管理（pydantic-settings，读取 .env）
 │   │   ├── database.py          # 数据库引擎 / Session 生成器 / 健康检查
@@ -91,6 +94,7 @@ server-template/
 │   │   └── base.py              # TableBase：id / created_at / updated_at / deleted_at
 │   ├── modules/
 │   │   ├── auth/                # 认证模块：登录 / 刷新 / 注册 / 登出 / 解析当前用户
+│   │   ├── items/               # 示例模块：CRUD + 所有者权限控制 + 分页搜索
 │   │   └── users/               # 用户模块：创建 / 更新 / 列表查询 / 超管创建
 │   ├── repositories/
 │   │   └── base.py              # 泛型 RepositoryBase[ModelType]
@@ -113,16 +117,17 @@ server-template/
 ### 请求处理流程
 
 1. 客户端发起 HTTP 请求
-2. `RequestIDMiddleware` 生成 UUID 并写入 `ContextVar`，响应头附带 `X-Request-Id`
-3. `LoggingMiddleware` 记录请求方法、路径、状态码、耗时（JSON 格式，含 request_id）
-4. `ProxyHeadersMiddleware` 从可信代理解析 `X-Forwarded-For`，设置真实客户端 IP
-5. `CORSMiddleware` 处理跨域
-5. slowapi `RateLimitExceeded` 处理器对超限请求返回 429
-6. 路由匹配至 `api/v1/endpoints/` 下的具体 endpoint
-7. endpoint 通过 `deps.py` 注入 Session / CurrentUser / ListParams 等依赖
-8. endpoint 调用 `modules/*/service.py` 处理业务逻辑
-9. service 调用 `modules/*/repository.py` 执行数据访问，必要时读写 Redis
-10. 若出现异常，`error_handler.py` 统一捕获并返回 `{"detail": "..."}` JSON 响应
+2. `ProxyHeadersMiddleware` 从可信代理解析 `X-Forwarded-For`，设置真实客户端 IP
+3. `RequestIDMiddleware` 生成 UUID 并写入 `ContextVar`，响应头附带 `X-Request-Id`
+4. `SecurityHeadersMiddleware` 注入安全响应头（X-Content-Type-Options 等）
+5. `LoggingMiddleware` 记录请求方法、路径、状态码、耗时（JSON 格式，含 request_id）
+6. `CORSMiddleware` 处理跨域
+7. slowapi `RateLimitExceeded` 处理器对超限请求返回 429
+8. 路由匹配至 `api/v1/endpoints/` 下的具体 endpoint
+9. endpoint 通过 `deps.py` 注入 Session / CurrentUser / ListParams 等依赖
+10. endpoint 调用 `modules/*/service.py` 处理业务逻辑
+11. service 调用 `modules/*/repository.py` 执行数据访问，必要时读写 Redis
+12. 若出现异常，`error_handler.py` 统一捕获并返回 `{"detail": "..."}` JSON 响应
 
 ### 模块关系
 
@@ -130,6 +135,7 @@ server-template/
 |------|------|
 | `auth` | 登录认证、Token 签发/刷新/撤销、用户注册、登出、解析当前登录用户 |
 | `users` | 用户 CRUD、超管创建、用户列表（仅管理员） |
+| `items` | 示例业务模块：CRUD + 所有者权限控制 + 分页搜索排序，可作为新模块参考 |
 
 ---
 
@@ -212,20 +218,22 @@ open http://localhost:8000/docs
 
 ## 新模块开发指南
 
-以新增一个 `orders` 模块为例，完整开发步骤如下：
+> **提示**：项目已内置 `items` 示例模块（含完整 CRUD + 所有者权限控制 + 分页搜索），可直接参考 `app/modules/items/` 和 `app/api/v1/endpoints/items.py` 的代码。
+
+以新增一个 `products` 模块为例，完整开发步骤如下：
 
 ### 第 1 步：定义数据库模型
 
-创建 `app/modules/orders/models.py`：
+创建 `app/modules/products/models.py`：
 
 ```python
 from sqlmodel import Field
 from app.models.base import TableBase
 
 
-class Order(TableBase, table=True):
-    title: str = Field(max_length=255)
-    amount: int = Field(default=0)
+class Product(TableBase, table=True):
+    name: str = Field(max_length=255)
+    price: int = Field(default=0)
     owner_id: int = Field(foreign_key="user.id")
 ```
 
@@ -233,7 +241,7 @@ class Order(TableBase, table=True):
 
 ### 第 2 步：定义 Schema
 
-创建 `app/modules/orders/schemas.py`：
+创建 `app/modules/products/schemas.py`：
 
 ```python
 from typing import Literal
@@ -241,43 +249,43 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.common import PaginationParams, SortOrder
 
 
-class OrderCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=255)
-    amount: int = Field(ge=0)
+class ProductCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    price: int = Field(ge=0)
 
 
-class OrderUpdate(BaseModel):
-    title: str | None = None
-    amount: int | None = Field(default=None, ge=0)
+class ProductUpdate(BaseModel):
+    name: str | None = None
+    price: int | None = Field(default=None, ge=0)
 
 
-class OrderResponse(BaseModel):
+class ProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    title: str
-    amount: int
+    name: str
+    price: int
     owner_id: int
 
 
-class OrderListParams(PaginationParams):
-    sort_by: Literal["created_at", "updated_at", "title"] = "created_at"
+class ProductListParams(PaginationParams):
+    sort_by: Literal["created_at", "updated_at", "name"] = "created_at"
     sort_order: SortOrder = "desc"
     search: str | None = Field(default=None, max_length=255)
 ```
 
 ### 第 3 步：编写 Repository
 
-创建 `app/modules/orders/repository.py`：
+创建 `app/modules/products/repository.py`：
 
 ```python
 from sqlmodel import Session, select
-from app.modules.orders.models import Order
+from app.modules.products.models import Product
 from app.repositories.base import RepositoryBase
 from app.schemas.common import SortOrder
 
 
-class OrderRepository(RepositoryBase[Order]):
+class ProductRepository(RepositoryBase[Product]):
     def get_by_owner_with_count(
         self,
         session: Session,
@@ -287,13 +295,13 @@ class OrderRepository(RepositoryBase[Order]):
         sort_by: str = "created_at",
         sort_order: SortOrder = "desc",
         search: str | None = None,
-    ) -> tuple[list[Order], int]:
-        statement = select(Order).where(
-            Order.owner_id == owner_id,
-            Order.deleted_at.is_(None),
+    ) -> tuple[list[Product], int]:
+        statement = select(Product).where(
+            Product.owner_id == owner_id,
+            Product.deleted_at.is_(None),
         )
         if search:
-            statement = statement.where(Order.title.ilike(f"%{search.strip()}%"))
+            statement = statement.where(Product.name.ilike(f"%{search.strip()}%"))
 
         total = self._count_statement(session, statement)
         statement = self._apply_sort(statement, sort_by=sort_by, sort_order=sort_order)
@@ -301,33 +309,33 @@ class OrderRepository(RepositoryBase[Order]):
         return list(session.exec(statement).all()), total
 
 
-order_repository = OrderRepository(Order)
+product_repository = ProductRepository(Product)
 ```
 
 ### 第 4 步：编写 Service
 
-创建 `app/modules/orders/service.py`：
+创建 `app/modules/products/service.py`：
 
 ```python
 from sqlmodel import Session
 from app.core.transaction import commit_and_refresh
-from app.modules.orders.models import Order
-from app.modules.orders.repository import order_repository
-from app.modules.orders.schemas import OrderCreate, OrderListParams
+from app.modules.products.models import Product
+from app.modules.products.repository import product_repository
+from app.modules.products.schemas import ProductCreate, ProductListParams
 from app.modules.users.models import User
 
 
-def create_order(session: Session, order_in: OrderCreate, owner: User) -> Order:
-    order_data = order_in.model_dump()
-    order_data["owner_id"] = owner.id
-    order = order_repository.create(session, order_data)
-    return commit_and_refresh(session, order)
+def create_product(session: Session, product_in: ProductCreate, owner: User) -> Product:
+    product_data = product_in.model_dump()
+    product_data["owner_id"] = owner.id
+    product = product_repository.create(session, product_data)
+    return commit_and_refresh(session, product)
 
 
-def list_user_orders(
-    session: Session, owner_id: int, params: OrderListParams
-) -> tuple[list[Order], int]:
-    return order_repository.get_by_owner_with_count(
+def list_user_products(
+    session: Session, owner_id: int, params: ProductListParams
+) -> tuple[list[Product], int]:
+    return product_repository.get_by_owner_with_count(
         session,
         owner_id,
         skip=params.skip,
@@ -340,22 +348,22 @@ def list_user_orders(
 
 ### 第 5 步：编写 Endpoint
 
-创建 `app/api/v1/endpoints/orders.py`：
+创建 `app/api/v1/endpoints/products.py`：
 
 ```python
 from fastapi import APIRouter
 from app.api.deps import CurrentUser, SessionDep
-from app.modules.orders.schemas import OrderCreate, OrderResponse
-from app.modules.orders.service import create_order
+from app.modules.products.schemas import ProductCreate, ProductResponse
+from app.modules.products.service import create_product
 
 router = APIRouter()
 
 
-@router.post("/", response_model=OrderResponse, status_code=201)
-def create_new_order(
-    session: SessionDep, current_user: CurrentUser, order_in: OrderCreate
+@router.post("/", response_model=ProductResponse, status_code=201)
+def create_new_product(
+    session: SessionDep, current_user: CurrentUser, product_in: ProductCreate
 ):
-    return create_order(session, order_in, current_user)
+    return create_product(session, product_in, current_user)
 ```
 
 ### 第 6 步：注册路由
@@ -363,21 +371,21 @@ def create_new_order(
 在 `app/api/v1/router.py` 中添加：
 
 ```python
-from app.api.v1.endpoints import auth, users, health, orders
+from app.api.v1.endpoints import products
 
-api_router.include_router(orders.router, prefix="/orders", tags=["orders"])
+api_router.include_router(products.router, prefix="/products", tags=["products"])
 ```
 
 ### 第 7 步：生成并执行迁移
 
 ```bash
-uv run alembic revision --autogenerate -m "add order table"
+uv run alembic revision --autogenerate -m "add product table"
 uv run alembic upgrade head
 ```
 
 ### 第 8 步：编写测试
 
-在 `tests/api/v1/test_orders.py` 中编写接口测试，参考 `test_users.py` 的 fixture 模式。
+在 `tests/api/v1/test_products.py` 中编写接口测试，参考 `tests/api/v1/test_users.py` 的 fixture 模式。
 
 ---
 
@@ -399,6 +407,17 @@ uv run alembic upgrade head
 | GET | `/me` | 获取当前用户信息 | access token |
 | PUT | `/me` | 更新当前用户信息（full_name / password） | access token |
 | GET | `/` | 分页查询用户列表（支持搜索、状态过滤、排序） | 仅超级管理员 |
+
+### Items 模块 `/api/v1/items`
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| POST | `/` | 创建 item，归属当前用户 | access token |
+| GET | `/my` | 分页查询当前用户的 items（支持搜索、排序） | access token |
+| GET | `/{item_id}` | 获取单个 item（仅所有者或超管） | access token |
+| PUT | `/{item_id}` | 更新 item（仅所有者或超管） | access token |
+| DELETE | `/{item_id}` | 软删除 item（仅所有者或超管） | access token |
+| GET | `/` | 分页查询全部 items（支持搜索、排序） | 仅超级管理员 |
 
 ### Health `/api/v1/health`
 
