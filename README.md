@@ -229,12 +229,7 @@ class Order(TableBase, table=True):
     owner_id: int = Field(foreign_key="user.id")
 ```
 
-在 `alembic/env.py` 中注册模型导入（Alembic autogenerate 需要）：
-
-```python
-import app.modules.users.models  # noqa: F401
-import app.modules.orders.models  # noqa: F401
-```
+`alembic/env.py` 会自动扫描 `app/modules/*/models.py` 并导入，**无需手动注册**。只需确保模型文件位于 `app/modules/<module>/models.py` 即可被 Alembic autogenerate 发现。
 
 ### 第 2 步：定义 Schema
 
@@ -451,7 +446,7 @@ uv run python scripts/bootstrap_db.py
 
 ### Model 注册
 
-新增数据库模型后，必须在 `alembic/env.py` 中显式导入对应的 `app.modules.<module>.models`，否则 Alembic autogenerate 无法检测到新表。
+`alembic/env.py` 会自动扫描 `app/modules/*/models.py` 并导入，新增模块时**无需手动注册**。只需确保模型文件遵循 `app/modules/<module>/models.py` 命名约定，Alembic autogenerate 即可自动发现新表。
 
 ---
 

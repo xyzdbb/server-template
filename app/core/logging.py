@@ -3,10 +3,11 @@ import sys
 
 from pythonjsonlogger import jsonlogger
 
+from app.core.context import request_id_ctx
+
 
 class RequestIDFilter(logging.Filter):
     def filter(self, record):
-        from app.middleware.request_id import request_id_ctx
         record.request_id = request_id_ctx.get("")
         return True
 

@@ -1,7 +1,7 @@
 import time
 
+from app.core.context import request_id_ctx
 from app.core.logging import logger
-from app.middleware.request_id import request_id_ctx
 
 
 class LoggingMiddleware:

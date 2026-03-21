@@ -1,4 +1,6 @@
+import importlib
 from logging.config import fileConfig
+from pathlib import Path
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
@@ -6,8 +8,11 @@ from alembic import context
 from app.core.config import settings
 from app.models.base import SQLModel
 
-# 显式导入所有 SQLModel 表模型，确保 autogenerate 能发现它们
-import app.modules.users.models  # noqa: F401
+# 自动扫描 app/modules/*/models.py，确保 autogenerate 能发现所有表模型
+_modules_dir = Path(__file__).resolve().parent.parent / "app" / "modules"
+for models_file in _modules_dir.glob("*/models.py"):
+    module_name = f"app.modules.{models_file.parent.name}.models"
+    importlib.import_module(module_name)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
