@@ -17,7 +17,7 @@ from app.middleware.logging import LoggingMiddleware
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
-    await close_redis()
+    close_redis()
 
 
 app = FastAPI(

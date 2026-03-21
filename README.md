@@ -80,7 +80,7 @@ server-template/
 │   │   ├── database.py          # 数据库引擎 / Session 生成器 / 健康检查
 │   │   ├── limiter.py           # slowapi Limiter 实例（Redis 后端）
 │   │   ├── logging.py           # 结构化 JSON 日志 + RequestID 过滤器
-│   │   ├── redis.py             # Redis 异步连接池管理
+│   │   ├── redis.py             # Redis 连接池管理
 │   │   ├── security.py          # JWT 编解码（含 jti）/ 密码哈希 / 强度校验
 │   │   └── transaction.py       # commit_and_refresh 事务辅助
 │   ├── middleware/
@@ -460,12 +460,12 @@ uv run python scripts/bootstrap_db.py
 - **框架**：pytest + httpx
 - **数据库**：SQLite 内存库（`StaticPool`），每个测试 fixture 独立创建和销毁
 - **HTTP 客户端**：FastAPI `TestClient`，通过 `dependency_overrides` 注入测试 Session
+- **Redis**：`FakeRedis` 内存替身（`conftest.py` 中通过 `unittest.mock.patch` 自动注入），无需真实 Redis
+- **频率限制**：测试环境自动禁用（`limiter.enabled = False`），避免跨用例累积导致 429
 - **覆盖层次**：
   - `tests/api/v1/` — 接口层测试（完整 HTTP 请求/响应）
   - `tests/services/` — 服务层测试（业务逻辑）
   - `tests/repositories/` — 仓储层测试（数据访问）
-
-> **注意**：auth 相关测试（login / refresh / logout）依赖 Redis jti 机制，运行前需确保 Redis 可用，或在测试环境中通过 mock 跳过 Redis 调用。
 
 ### 运行测试
 
@@ -607,13 +607,27 @@ sequenceDiagram
 
 ---
 
+## 设计决策
+
+### 全同步架构
+
+项目整体采用**同步设计**（DB + Redis + 业务层均为同步），所有 endpoint 使用 `def`（非 `async def`）。FastAPI 会自动将 `def` 端点放入线程池执行，因此同步 I/O 不会阻塞事件循环。这一设计的优势：
+
+- 统一的编程模型，无 sync/async 混用风险
+- 调试友好，栈帧清晰
+- 与 SQLModel 同步 Session 天然匹配
+
+如未来遇到高并发 I/O 密集瓶颈，可整体迁移至 `create_async_engine` + `AsyncSession` + `redis.asyncio`。
+
+---
+
 ## 待演进方向
 
 以下为模板当前未覆盖但业务扩展时建议关注的方向：
 
 | 方向 | 说明 |
 |------|------|
-| **异步 DB** | 当前为全同步设计（SQLModel 同步 Session），高并发 I/O 密集场景可切换至 `create_async_engine` + `AsyncSession` |
+| **异步化** | 当前为全同步设计，高并发 I/O 密集场景可整体切换至 `create_async_engine` + `AsyncSession` + `redis.asyncio`，需同步迁移所有层 |
 | **RBAC 权限模型** | 当前仅 `is_superuser` 布尔值，复杂业务需引入角色/权限表 |
 | **access token 黑名单** | 当前 access token 无法主动撤销，密码修改/账号禁用后可将旧 token jti 加入 Redis 黑名单，TTL 与 access token 一致 |
 | **文件存储** | OSS / S3 文件上传集成 |

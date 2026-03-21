@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
@@ -15,8 +16,46 @@ os.environ.setdefault("REDIS_URL", "memory://")
 os.environ.setdefault("FIRST_SUPERUSER", "admin@example.com")
 os.environ.setdefault("FIRST_SUPERUSER_PASSWORD", "Admin1234")
 
+from app.core.limiter import limiter
 from app.main import app
 from app.api.deps import get_session
+
+
+class FakeRedis:
+    """测试用内存 Redis 替身，实现业务代码所需的 set/get/exists/delete 接口"""
+
+    def __init__(self):
+        self._store: dict[str, str] = {}
+
+    def set(self, key: str, value: str, ex: int | None = None) -> bool:
+        self._store[key] = value
+        return True
+
+    def get(self, key: str) -> str | None:
+        return self._store.get(key)
+
+    def exists(self, *keys: str) -> int:
+        return sum(1 for k in keys if k in self._store)
+
+    def delete(self, *keys: str) -> int:
+        count = sum(1 for k in keys if k in self._store)
+        for k in keys:
+            self._store.pop(k, None)
+        return count
+
+
+@pytest.fixture(autouse=True)
+def _mock_redis():
+    fake = FakeRedis()
+    with patch("app.modules.auth.service.get_redis", return_value=fake):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _disable_rate_limit():
+    limiter.enabled = False
+    yield
+    limiter.enabled = True
 
 
 @pytest.fixture(name="session")

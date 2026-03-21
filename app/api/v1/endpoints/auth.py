@@ -47,11 +47,11 @@ router = APIRouter()
     },
 )
 @limiter.limit("5/minute")
-async def login(request: Request, session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+def login(request: Request, session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = authenticate_user(session, form_data.username, form_data.password)
     if not user:
         raise AuthException("Incorrect username or password")
-    tokens = await create_user_token(user.id)
+    tokens = create_user_token(user.id)
     return Token(**tokens)
 
 
@@ -78,8 +78,8 @@ async def login(request: Request, session: SessionDep, form_data: Annotated[OAut
     },
 )
 @limiter.limit("20/minute")
-async def refresh_access_token(request: Request, session: SessionDep, body: RefreshTokenRequest):
-    tokens = await refresh_user_token(session, body.refresh_token)
+def refresh_access_token(request: Request, session: SessionDep, body: RefreshTokenRequest):
+    tokens = refresh_user_token(session, body.refresh_token)
     return Token(**tokens)
 
 
@@ -94,8 +94,8 @@ async def refresh_access_token(request: Request, session: SessionDep, body: Refr
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-async def logout(request: RefreshTokenRequest):
-    await logout_user(request.refresh_token)
+def logout(request: RefreshTokenRequest):
+    logout_user(request.refresh_token)
 
 
 @router.post(
