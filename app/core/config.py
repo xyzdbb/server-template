@@ -1,9 +1,10 @@
 from functools import lru_cache
-from typing import List, Literal
+from typing import Literal
 from urllib.parse import quote_plus
 
 from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
@@ -35,20 +36,20 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    TRUSTED_HOSTS: List[str] = ["127.0.0.1"]
+    TRUSTED_HOSTS: list[str] = ["127.0.0.1"]
 
-    BACKEND_CORS_ORIGINS: List[str] = []
+    BACKEND_CORS_ORIGINS: list[str] = []
 
     @field_validator("TRUSTED_HOSTS", "BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def split_comma_separated(cls, v: str | List[str]) -> List[str]:
+    def split_comma_separated(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str):
             return [i.strip() for i in v.split(",")]
         return v
 
     @field_validator("BACKEND_CORS_ORIGINS")
     @classmethod
-    def validate_cors_origins(cls, v: List[str]) -> List[str]:
+    def validate_cors_origins(cls, v: list[str]) -> list[str]:
         for origin in v:
             if origin == "*":
                 raise ValueError(

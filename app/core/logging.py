@@ -18,7 +18,7 @@ def setup_logging() -> logging.Logger:
         return app_logger
 
     handler = logging.StreamHandler(sys.stdout)
-    formatter = jsonlogger.JsonFormatter(  # type: ignore[attr-defined]
+    formatter = jsonlogger.JsonFormatter(
         "%(timestamp)s %(level)s %(name)s %(request_id)s %(message)s",
         rename_fields={"levelname": "level", "asctime": "timestamp"},
     )

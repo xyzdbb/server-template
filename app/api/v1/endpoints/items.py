@@ -8,6 +8,7 @@ from app.api.docs import (
     UNPROCESSABLE_ENTITY_RESPONSE,
 )
 from app.modules.items.deps import ItemListDep
+from app.modules.items.models import Item
 from app.modules.items.schemas import ItemCreate, ItemResponse, ItemUpdate
 from app.modules.items.service import (
     create_item,
@@ -32,7 +33,8 @@ router = APIRouter()
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def create_new_item(session: SessionDep, current_user: CurrentUser, item_in: ItemCreate):
+def create_new_item(session: SessionDep, current_user: CurrentUser, item_in: ItemCreate) -> Item:
+    assert current_user.id is not None
     return create_item(session, item_in, owner_id=current_user.id)
 
 
@@ -46,7 +48,7 @@ def create_new_item(session: SessionDep, current_user: CurrentUser, item_in: Ite
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def read_my_items(session: SessionDep, current_user: CurrentUser, params: ItemListDep):
+def read_my_items(session: SessionDep, current_user: CurrentUser, params: ItemListDep) -> Page[ItemResponse]:
     items, total = list_items_with_count(session, params, owner_id=current_user.id)
     return Page[ItemResponse](items=items, total=total, skip=params.skip, limit=params.limit)
 
@@ -62,7 +64,8 @@ def read_my_items(session: SessionDep, current_user: CurrentUser, params: ItemLi
         404: NOT_FOUND_RESPONSE,
     },
 )
-def read_item(session: SessionDep, current_user: CurrentUser, item_id: int):
+def read_item(session: SessionDep, current_user: CurrentUser, item_id: int) -> Item:
+    assert current_user.id is not None
     return get_item(session, item_id, current_user.id, is_superuser=current_user.is_superuser)
 
 
@@ -78,12 +81,9 @@ def read_item(session: SessionDep, current_user: CurrentUser, item_id: int):
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def update_existing_item(
-    session: SessionDep, current_user: CurrentUser, item_id: int, item_in: ItemUpdate
-):
-    return update_item(
-        session, item_id, item_in, current_user.id, is_superuser=current_user.is_superuser
-    )
+def update_existing_item(session: SessionDep, current_user: CurrentUser, item_id: int, item_in: ItemUpdate) -> Item:
+    assert current_user.id is not None
+    return update_item(session, item_id, item_in, current_user.id, is_superuser=current_user.is_superuser)
 
 
 @router.delete(
@@ -97,7 +97,8 @@ def update_existing_item(
         404: NOT_FOUND_RESPONSE,
     },
 )
-def delete_existing_item(session: SessionDep, current_user: CurrentUser, item_id: int):
+def delete_existing_item(session: SessionDep, current_user: CurrentUser, item_id: int) -> None:
+    assert current_user.id is not None
     delete_item(session, item_id, current_user.id, is_superuser=current_user.is_superuser)
 
 
@@ -112,6 +113,6 @@ def delete_existing_item(session: SessionDep, current_user: CurrentUser, item_id
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def read_items(session: SessionDep, _current_user: CurrentSuperuser, params: ItemListDep):
+def read_items(session: SessionDep, _current_user: CurrentSuperuser, params: ItemListDep) -> Page[ItemResponse]:
     items, total = list_items_with_count(session, params)
     return Page[ItemResponse](items=items, total=total, skip=params.skip, limit=params.limit)

@@ -10,7 +10,7 @@ def utc_now() -> datetime:
 
 class TableBase(SQLModel):
     # sqlmodel Field 与 pydantic mypy 插件重载不完全对齐
-    id: int | None = Field(default=None, primary_key=True)  # type: ignore[call-overload]
+    id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(  # type: ignore[call-overload]
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )

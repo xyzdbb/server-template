@@ -31,28 +31,39 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP"]
-ignore = []
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = [
+    "B008",    # FastAPI 的 Query/Depends 作为默认参数是标准模式
+    "SIM108",  # 三元表达式不总是更清晰
+    "UP046",   # PEP 695 类型参数语法，Pydantic/SQLModel 尚未完全支持
+    "UP047",   # PEP 695 类型参数语法，同上
+]
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/*" = ["T20"]
-"tests/*" = ["B"]   # 测试里可以用 assert 和一些 bugbear 不喜欢的写法
+"tests/*" = ["B"]
+"alembic/*" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
-ignore_missing_imports = true        # 三方库缺 stub 不报错
-disallow_untyped_defs = true         # 函数必须有类型注解（最有价值的一条）
-warn_return_any = false              # 放开，减少噪音
-check_untyped_defs = false           # 不检查未注解函数内部
+ignore_missing_imports = true
+disallow_untyped_defs = true
+warn_return_any = false
+check_untyped_defs = true
+warn_unused_ignores = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = ["testcontainers.*", "slowapi.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["app.repositories.*", "app.modules.*.repository"]
+disable_error_code = ["union-attr", "attr-defined", "call-overload", "assignment"]
 
 
 [tool.pytest.ini_options]

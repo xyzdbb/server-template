@@ -1,7 +1,7 @@
 from typing import TypeVar
 
 from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import SQLModel, Session
+from sqlmodel import Session, SQLModel
 
 T = TypeVar("T", bound=SQLModel)
 

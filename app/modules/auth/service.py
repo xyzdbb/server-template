@@ -36,7 +36,7 @@ def _store_refresh_jti(jti: str, user_id: int) -> None:
 
 def _verify_refresh_jti(jti: str) -> bool:
     r = get_redis()
-    return r.exists(f"{REFRESH_TOKEN_KEY_PREFIX}{jti}") > 0
+    return bool(r.exists(f"{REFRESH_TOKEN_KEY_PREFIX}{jti}"))
 
 
 def _revoke_refresh_jti(jti: str) -> None:
@@ -84,6 +84,7 @@ def refresh_user_token(session: Session, refresh_token: str) -> dict[str, str]:
     if old_jti:
         _revoke_refresh_jti(old_jti)
 
+    assert user.id is not None
     return create_user_token(user.id)
 
 

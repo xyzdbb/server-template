@@ -46,7 +46,7 @@ def test_soft_delete(session: Session):
 
 
 def test_soft_delete_excluded_from_get_multi(session: Session):
-    user = _make_user(session, "activeuser")
+    _make_user(session, "activeuser")
     deleted_user = _make_user(session, "deleteduser")
     session.commit()
 

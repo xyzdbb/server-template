@@ -17,6 +17,7 @@ from app.modules.auth.service import (
     logout_user,
     refresh_user_token,
 )
+from app.modules.users.models import User
 from app.modules.users.schemas import UserCreate, UserResponse
 from app.modules.users.service import create_user
 from app.utils.exceptions import AuthException
@@ -47,10 +48,11 @@ router = APIRouter()
     },
 )
 @limiter.limit("5/minute")
-def login(request: Request, session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+def login(request: Request, session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
     user = authenticate_user(session, form_data.username, form_data.password)
     if not user:
         raise AuthException("Incorrect username or password")
+    assert user.id is not None
     tokens = create_user_token(user.id)
     return Token(**tokens)
 
@@ -78,7 +80,7 @@ def login(request: Request, session: SessionDep, form_data: Annotated[OAuth2Pass
     },
 )
 @limiter.limit("20/minute")
-def refresh_access_token(request: Request, session: SessionDep, body: RefreshTokenRequest):
+def refresh_access_token(request: Request, session: SessionDep, body: RefreshTokenRequest) -> Token:
     tokens = refresh_user_token(session, body.refresh_token)
     return Token(**tokens)
 
@@ -94,7 +96,8 @@ def refresh_access_token(request: Request, session: SessionDep, body: RefreshTok
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def logout(body: RefreshTokenRequest, current_user: CurrentUser):
+def logout(body: RefreshTokenRequest, current_user: CurrentUser) -> None:
+    assert current_user.id is not None
     logout_user(body.refresh_token, current_user.id)
 
 
@@ -124,5 +127,5 @@ def logout(body: RefreshTokenRequest, current_user: CurrentUser):
     },
 )
 @limiter.limit("3/minute")
-def signup(request: Request, session: SessionDep, user_in: UserCreate):
+def signup(request: Request, session: SessionDep, user_in: UserCreate) -> User:
     return create_user(session, user_in)

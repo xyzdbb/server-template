@@ -4,8 +4,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from sqlmodel import Session, SQLModel, create_engine
 from fastapi.testclient import TestClient
+from sqlmodel import Session, SQLModel, create_engine
 from testcontainers.postgres import PostgresContainer
 
 # Docker Desktop (macOS/Windows) 的 socket 不在默认路径，自动探测
@@ -28,10 +28,10 @@ os.environ.setdefault("REDIS_URL", "memory://")
 os.environ.setdefault("FIRST_SUPERUSER", "admin@example.com")
 os.environ.setdefault("FIRST_SUPERUSER_PASSWORD", "Admin1234")
 
+from app.api.deps import get_session
 from app.core.database import reset_engine
 from app.core.limiter import limiter
 from app.main import app
-from app.api.deps import get_session
 from app.modules.users.repository import user_repository
 
 
