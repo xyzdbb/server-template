@@ -35,31 +35,28 @@ line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "SIM"]
+# E/F: 语法错误与未定义名称（最高价值）
+# I: import 排序（全自动修复，零心智负担）
+# B: bugbear 真实反模式（如可变默认参数）
+# UP: 自动升级旧式语法（大多数可 --fix 自动处理）
+select = ["E", "F", "I", "B", "UP"]
 ignore = [
-    "B008",    # FastAPI 的 Query/Depends 作为默认参数是标准模式
-    "SIM108",  # 三元表达式不总是更清晰
-    "UP046",   # PEP 695 类型参数语法，Pydantic/SQLModel 尚未完全支持
-    "UP047",   # PEP 695 类型参数语法，同上
+    "B008",  # FastAPI Query/Depends 在默认参数中是标准模式
+    "UP046", # PEP 695 泛型语法，Pydantic/SQLModel 尚未支持
+    "UP047", # 同上
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/*" = ["T20"]
-"tests/*" = ["B"]
-"alembic/*" = ["E501"]
+"tests/*" = ["B"]  # 测试中 assert 和部分 bugbear 规则干扰正常测试写法
 
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
-disallow_untyped_defs = true
+disallow_untyped_defs = true   # 函数必须有类型注解，是 mypy 最核心的价值
+check_untyped_defs = false     # 不深入检查无注解函数内部，减少噪音
 warn_return_any = false
-check_untyped_defs = true
 warn_unused_ignores = true
 plugins = ["pydantic.mypy"]
-
-[[tool.mypy.overrides]]
-module = ["testcontainers.*", "slowapi.*"]
-ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["app.repositories.*", "app.modules.*.repository"]
