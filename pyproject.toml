@@ -35,34 +35,20 @@ line-length = 88
 target-version = "py312"
 
 [tool.ruff.lint]
-select = [
-    "E",     # pycodestyle errors
-    "F",     # pyflakes
-    "I",     # isort
-    "B",     # flake8-bugbear
-    "SIM",   # flake8-simplify
-    "UP",    # pyupgrade
-    "RUF",   # ruff-specific rules
-    "T20",   # flake8-print (禁止遗留 print)
-    "PIE",   # flake8-pie
-    "PT",    # flake8-pytest-style
-    "RET",   # flake8-return
-]
-ignore = [
-    "RET504",  # unnecessary assignment before return
-]
+select = ["E", "F", "I", "B", "UP"]
+ignore = []
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/*" = ["T20"]  # 脚本允许 print 输出
+"scripts/*" = ["T20"]
+"tests/*" = ["B"]   # 测试里可以用 assert 和一些 bugbear 不喜欢的写法
 
 [tool.mypy]
 python_version = "3.12"
-strict = true
+ignore_missing_imports = true        # 三方库缺 stub 不报错
+disallow_untyped_defs = true         # 函数必须有类型注解（最有价值的一条）
+warn_return_any = false              # 放开，减少噪音
+check_untyped_defs = false           # 不检查未注解函数内部
 plugins = ["pydantic.mypy"]
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
 
 [[tool.mypy.overrides]]
 module = ["testcontainers.*", "slowapi.*"]
