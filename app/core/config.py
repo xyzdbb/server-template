@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
     POSTGRES_PORT: int = 5432
     
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def DATABASE_URL(self) -> str:
         user = quote_plus(self.POSTGRES_USER)
@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER_PASSWORD: str
     FIRST_SUPERUSER_FULL_NAME: str = "Admin User"
     
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def IS_PRODUCTION(self) -> bool:
         return self.ENVIRONMENT == "production"

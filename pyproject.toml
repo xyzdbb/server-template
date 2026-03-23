@@ -68,10 +68,6 @@ disallow_incomplete_defs = true
 module = ["testcontainers.*", "slowapi.*"]
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-# pydantic v2 @computed_field @property 叠加装饰器语法 mypy 不原生支持
-module = ["app.core.config"]
-disable_error_codes = ["prop-decorator"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

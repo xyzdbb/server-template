@@ -1,14 +1,14 @@
 import logging
 import sys
 
-from pythonjsonlogger.jsonlogger import JsonFormatter
+from pythonjsonlogger import jsonlogger
 
 from app.core.context import request_id_ctx
 
 
 class RequestIDFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        record.request_id = request_id_ctx.get("")  # type: ignore[attr-defined]
+        record.request_id = request_id_ctx.get("")
         return True
 
 
@@ -18,7 +18,7 @@ def setup_logging() -> logging.Logger:
         return app_logger
 
     handler = logging.StreamHandler(sys.stdout)
-    formatter = JsonFormatter(
+    formatter = jsonlogger.JsonFormatter(  # type: ignore[attr-defined]
         "%(timestamp)s %(level)s %(name)s %(request_id)s %(message)s",
         rename_fields={"levelname": "level", "asctime": "timestamp"},
     )
