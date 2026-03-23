@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -34,26 +35,48 @@ from app.api.deps import get_session
 
 
 class FakeRedis:
-    """测试用内存 Redis 替身，实现业务代码所需的 set/get/exists/delete 接口"""
+    """测试用内存 Redis 替身，支持 TTL 过期语义"""
 
     def __init__(self):
-        self._store: dict[str, str] = {}
+        self._store: dict[str, tuple[str, float | None]] = {}
+
+    def _is_alive(self, key: str) -> bool:
+        entry = self._store.get(key)
+        if entry is None:
+            return False
+        _, expire_at = entry
+        if expire_at is not None and time.monotonic() >= expire_at:
+            del self._store[key]
+            return False
+        return True
 
     def set(self, key: str, value: str, ex: int | None = None) -> bool:
-        self._store[key] = value
+        expire_at = (time.monotonic() + ex) if ex is not None else None
+        self._store[key] = (value, expire_at)
         return True
 
     def get(self, key: str) -> str | None:
-        return self._store.get(key)
+        if not self._is_alive(key):
+            return None
+        return self._store[key][0]
 
     def exists(self, *keys: str) -> int:
-        return sum(1 for k in keys if k in self._store)
+        return sum(1 for k in keys if self._is_alive(k))
 
     def delete(self, *keys: str) -> int:
         count = sum(1 for k in keys if k in self._store)
         for k in keys:
             self._store.pop(k, None)
         return count
+
+    def ttl(self, key: str) -> int:
+        """返回剩余秒数；-2 = key 不存在，-1 = 无过期时间"""
+        if not self._is_alive(key):
+            return -2
+        _, expire_at = self._store[key]
+        if expire_at is None:
+            return -1
+        return max(0, int(expire_at - time.monotonic()))
 
 
 @pytest.fixture(scope="session")
