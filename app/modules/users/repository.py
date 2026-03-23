@@ -69,6 +69,7 @@ class UserRepository(RepositoryBase[User]):
         return session.exec(statement).first()
 
     def get_active_users(self, session: Session) -> list[User]:
+        """预留方法：供后续定时任务 / 通知等场景批量获取活跃用户，当前无调用方。"""
         statement = select(User).where(
             User.is_active.is_(True),
             User.deleted_at.is_(None),

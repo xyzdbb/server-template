@@ -16,7 +16,7 @@ from app.modules.items.service import (
     list_items_with_count,
     update_item,
 )
-from app.schemas.common import Message, Page
+from app.schemas.common import Page
 
 router = APIRouter()
 
@@ -88,7 +88,7 @@ def update_existing_item(
 
 @router.delete(
     "/{item_id}",
-    response_model=Message,
+    status_code=204,
     summary="Delete item",
     description="Soft-delete an item. Users can only delete their own items; superusers can delete any.",
     responses={
@@ -99,7 +99,6 @@ def update_existing_item(
 )
 def delete_existing_item(session: SessionDep, current_user: CurrentUser, item_id: int):
     delete_item(session, item_id, current_user.id, is_superuser=current_user.is_superuser)
-    return Message(message="Item deleted")
 
 
 @router.get(

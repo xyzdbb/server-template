@@ -209,8 +209,8 @@ def test_delete_own_item(client: TestClient, auth_headers: dict):
     item_id = create.json()["id"]
 
     response = client.delete(f"/api/v1/items/{item_id}", headers=auth_headers)
-    assert response.status_code == 200
-    assert response.json()["message"] == "Item deleted"
+    assert response.status_code == 204
+    assert response.content == b""
 
     get_response = client.get(f"/api/v1/items/{item_id}", headers=auth_headers)
     assert get_response.status_code == 404
