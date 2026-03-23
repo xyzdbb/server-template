@@ -1,14 +1,22 @@
 import time
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from app.core.context import request_id_ctx
 from app.core.logging import logger
 
+_Scope = dict[str, Any]
+_Message = dict[str, Any]
+_Receive = Callable[[], Awaitable[_Message]]
+_Send = Callable[[_Message], Awaitable[None]]
+_ASGIApp = Callable[[_Scope, _Receive, _Send], Awaitable[None]]
+
 
 class LoggingMiddleware:
-    def __init__(self, app):
+    def __init__(self, app: _ASGIApp) -> None:
         self.app = app
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: _Scope, receive: _Receive, send: _Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
@@ -16,7 +24,7 @@ class LoggingMiddleware:
         start_time = time.time()
         status_code = 500
 
-        async def send_wrapper(message):
+        async def send_wrapper(message: _Message) -> None:
             nonlocal status_code
             if message["type"] == "http.response.start":
                 status_code = message["status"]

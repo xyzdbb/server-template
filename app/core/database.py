@@ -1,14 +1,17 @@
-from sqlalchemy import text
+from collections.abc import Generator
+from typing import Any
+
+from sqlalchemy import Engine, text
 from sqlalchemy.pool import NullPool, QueuePool
 from sqlmodel import Session, create_engine
 
 from app.core.config import settings
 
-_engine = None
+_engine: Engine | None = None
 
 
-def _build_engine_kwargs() -> dict:
-    kwargs: dict = {"echo": not settings.IS_PRODUCTION}
+def _build_engine_kwargs() -> dict[str, Any]:
+    kwargs: dict[str, Any] = {"echo": not settings.IS_PRODUCTION}
     if settings.ENVIRONMENT == "test":
         kwargs["poolclass"] = NullPool
     else:
@@ -25,14 +28,14 @@ def _build_engine_kwargs() -> dict:
     return kwargs
 
 
-def get_engine():
+def get_engine() -> Engine:
     global _engine
     if _engine is None:
         _engine = create_engine(settings.DATABASE_URL, **_build_engine_kwargs())
     return _engine
 
 
-def reset_engine():
+def reset_engine() -> None:
     """Dispose the cached engine and clear the reference.
 
     Call this in test teardown or when settings change to force re-creation.
@@ -43,7 +46,7 @@ def reset_engine():
         _engine = None
 
 
-def get_session():
+def get_session() -> Generator[Session, None, None]:
     with Session(get_engine()) as session:
         yield session
 

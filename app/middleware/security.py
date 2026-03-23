@@ -1,7 +1,16 @@
+from collections.abc import Awaitable, Callable
+from typing import Any
+
+_Scope = dict[str, Any]
+_Message = dict[str, Any]
+_Receive = Callable[[], Awaitable[_Message]]
+_Send = Callable[[_Message], Awaitable[None]]
+_ASGIApp = Callable[[_Scope, _Receive, _Send], Awaitable[None]]
+
 # NOTE: Strict-Transport-Security (HSTS) 不在此处设置。
 # HSTS 应由反向代理 / 负载均衡器（Nginx、Cloudflare、ALB 等）统一注入，
 # 避免在开发环境或非 TLS 场景下误启用导致浏览器强制 HTTPS。
-SECURITY_HEADERS = [
+SECURITY_HEADERS: list[tuple[bytes, bytes]] = [
     (b"x-content-type-options", b"nosniff"),
     (b"x-frame-options", b"DENY"),
     (b"x-xss-protection", b"0"),
@@ -11,17 +20,17 @@ SECURITY_HEADERS = [
 
 
 class SecurityHeadersMiddleware:
-    def __init__(self, app):
+    def __init__(self, app: _ASGIApp) -> None:
         self.app = app
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: _Scope, receive: _Receive, send: _Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
-        async def send_wrapper(message):
+        async def send_wrapper(message: _Message) -> None:
             if message["type"] == "http.response.start":
-                headers = list(message.get("headers", []))
+                headers: list[tuple[bytes, bytes]] = list(message.get("headers", []))
                 existing = {k for k, _ in headers}
                 for key, value in SECURITY_HEADERS:
                     if key not in existing:
