@@ -95,9 +95,9 @@ class RepositoryBase(Generic[ModelType]):
             logger.error(f"Error updating {self.model.__name__}: {exc}")
             raise
 
-    def soft_delete(self, session: Session, id: int) -> ModelType | None:
+    def soft_delete(self, session: Session, target: "int | ModelType") -> ModelType | None:
         try:
-            obj = self.get(session, id)
+            obj = self.get(session, target) if isinstance(target, int) else target
             if obj:
                 obj.deleted_at = datetime.now(UTC)
                 session.add(obj)

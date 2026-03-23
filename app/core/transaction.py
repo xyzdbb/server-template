@@ -6,6 +6,15 @@ from sqlmodel import Session
 ModelType = TypeVar("ModelType")
 
 
+def safe_commit(session: Session) -> None:
+    """Commit with rollback on failure. Use for operations that don't need refresh (e.g. delete)."""
+    try:
+        session.commit()
+    except SQLAlchemyError:
+        session.rollback()
+        raise
+
+
 def commit_and_refresh(session: Session, instance: ModelType, *extra: ModelType) -> ModelType:
     """Commit and refresh all given instances. Returns the first one for convenience."""
     try:

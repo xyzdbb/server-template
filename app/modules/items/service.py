@@ -1,6 +1,6 @@
 from sqlmodel import Session
 
-from app.core.transaction import commit_and_refresh
+from app.core.transaction import commit_and_refresh, safe_commit
 from app.modules.items.models import Item
 from app.modules.items.repository import item_repository
 from app.modules.items.schemas import ItemCreate, ItemListParams, ItemUpdate
@@ -45,8 +45,8 @@ def update_item(
 def delete_item(session: Session, item_id: int, user_id: int, *, is_superuser: bool) -> None:
     item = _get_item_or_404(session, item_id)
     _check_owner(item, user_id, is_superuser=is_superuser)
-    item_repository.soft_delete(session, item_id)
-    session.commit()
+    item_repository.soft_delete(session, item)
+    safe_commit(session)
 
 
 def list_items_with_count(
