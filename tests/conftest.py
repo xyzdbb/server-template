@@ -118,7 +118,7 @@ def _reset_db_engine():
 def session_fixture(_engine):
     conn = _engine.connect()
     txn = conn.begin()
-    session = Session(bind=conn)
+    session = Session(bind=conn, join_transaction_mode="create_savepoint")
     yield session
     session.close()
     txn.rollback()

@@ -1,3 +1,6 @@
+from typing import Any
+
+from sqlalchemy import Select
 from sqlmodel import Session, select
 
 from app.modules.items.models import Item
@@ -10,7 +13,7 @@ class ItemRepository(RepositoryBase[Item]):
         self,
         owner_id: int | None = None,
         search: str | None = None,
-    ):
+    ) -> Select[Any]:
         statement = select(Item).where(Item.deleted_at.is_(None))
         if owner_id is not None:
             statement = statement.where(Item.owner_id == owner_id)

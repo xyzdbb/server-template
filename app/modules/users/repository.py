@@ -1,3 +1,6 @@
+from typing import Any
+
+from sqlalchemy import Select
 from sqlmodel import Session, select
 
 from app.modules.users.models import User
@@ -11,7 +14,7 @@ class UserRepository(RepositoryBase[User]):
         search: str | None = None,
         is_active: bool | None = None,
         is_superuser: bool | None = None,
-    ):
+    ) -> Select[Any]:
         statement = select(User).where(User.deleted_at.is_(None))
         if search:
             search_term = f"%{search.strip()}%"
