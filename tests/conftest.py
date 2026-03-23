@@ -32,6 +32,7 @@ from app.core.database import reset_engine
 from app.core.limiter import limiter
 from app.main import app
 from app.api.deps import get_session
+from app.modules.users.repository import user_repository
 
 
 class FakeRedis:
@@ -134,3 +135,23 @@ def client_fixture(session: Session):
     with TestClient(app) as client:
         yield client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def superuser_headers(client: TestClient, session: Session) -> dict:
+    """创建超级用户并返回认证 headers，供所有测试模块复用。"""
+    client.post(
+        "/api/v1/auth/signup",
+        json={"username": "superadmin", "password": "Test1234", "full_name": "Super"},
+    )
+    admin = user_repository.get_by_username(session, "superadmin")
+    assert admin is not None
+    admin.is_superuser = True
+    session.add(admin)
+    session.commit()
+
+    login = client.post(
+        "/api/v1/auth/login",
+        data={"username": "superadmin", "password": "Test1234"},
+    )
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}

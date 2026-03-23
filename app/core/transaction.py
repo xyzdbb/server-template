@@ -1,9 +1,9 @@
 from typing import TypeVar
 
 from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import Session
+from sqlmodel import SQLModel, Session
 
-ModelType = TypeVar("ModelType")
+T = TypeVar("T", bound=SQLModel)
 
 
 def safe_commit(session: Session) -> None:
@@ -15,7 +15,7 @@ def safe_commit(session: Session) -> None:
         raise
 
 
-def commit_and_refresh(session: Session, instance: ModelType, *extra: ModelType) -> ModelType:
+def commit_and_refresh(session: Session, instance: T, *extra: T) -> T:
     """Commit and refresh all given instances. Returns the first one for convenience."""
     try:
         session.commit()

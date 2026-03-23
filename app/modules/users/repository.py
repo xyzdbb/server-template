@@ -17,7 +17,7 @@ class UserRepository(RepositoryBase[User]):
     ) -> Select[Any]:
         statement = select(User).where(User.deleted_at.is_(None))
         if search:
-            search_term = f"%{search.strip()}%"
+            search_term = f"%{self._escape_like(search)}%"
             statement = statement.where(
                 User.username.ilike(search_term) | User.full_name.ilike(search_term)
             )

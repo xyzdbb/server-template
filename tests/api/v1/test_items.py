@@ -1,8 +1,5 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session
-
-from app.modules.users.repository import user_repository
 
 
 @pytest.fixture
@@ -27,25 +24,6 @@ def other_auth_headers(client: TestClient) -> dict:
     login = client.post(
         "/api/v1/auth/login",
         data={"username": "otheruser", "password": "Test1234"},
-    )
-    return {"Authorization": f"Bearer {login.json()['access_token']}"}
-
-
-@pytest.fixture
-def superuser_headers(client: TestClient, session: Session) -> dict:
-    client.post(
-        "/api/v1/auth/signup",
-        json={"username": "superadmin", "password": "Test1234", "full_name": "Super"},
-    )
-    admin = user_repository.get_by_username(session, "superadmin")
-    assert admin is not None
-    admin.is_superuser = True
-    session.add(admin)
-    session.commit()
-
-    login = client.post(
-        "/api/v1/auth/login",
-        data={"username": "superadmin", "password": "Test1234"},
     )
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 

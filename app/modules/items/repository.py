@@ -18,7 +18,7 @@ class ItemRepository(RepositoryBase[Item]):
         if owner_id is not None:
             statement = statement.where(Item.owner_id == owner_id)
         if search:
-            statement = statement.where(Item.title.ilike(f"%{search.strip()}%"))
+            statement = statement.where(Item.title.ilike(f"%{self._escape_like(search)}%"))
         return statement
 
     def get_multi_with_count(

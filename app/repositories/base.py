@@ -18,6 +18,11 @@ class RepositoryBase(Generic[ModelType]):
 
     _protected_fields: frozenset[str] = frozenset({"id", "created_at", "updated_at", "deleted_at"})
 
+    @staticmethod
+    def _escape_like(term: str) -> str:
+        """转义 LIKE 通配符，防止用户输入的 % 和 _ 被当作模式匹配。"""
+        return term.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
     def __init__(self, model: type[ModelType]) -> None:
         self.model = model
 

@@ -18,6 +18,13 @@ REFRESH_TOKEN_KEY_PREFIX = "refresh_token:"
 REFRESH_TOKEN_TTL_SECONDS = settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60
 
 
+def _extract_user_id(payload: dict) -> int:
+    sub = payload.get("sub")
+    if sub is None:
+        raise AuthException("Token missing subject claim")
+    return int(sub)
+
+
 def _store_refresh_jti(jti: str, user_id: int) -> None:
     r = get_redis()
     r.set(
@@ -60,9 +67,9 @@ def create_user_token(user_id: int) -> dict[str, str]:
 def refresh_user_token(session: Session, refresh_token: str) -> dict[str, str]:
     try:
         payload = decode_token(refresh_token, expected_type="refresh")
-        user_id = int(payload.get("sub"))
+        user_id = _extract_user_id(payload)
         old_jti = payload.get("jti")
-    except (InvalidTokenError, TypeError, ValueError) as exc:
+    except (InvalidTokenError, ValueError) as exc:
         raise AuthException("Invalid refresh token") from exc
 
     if old_jti and not _verify_refresh_jti(old_jti):
@@ -84,9 +91,9 @@ def logout_user(refresh_token: str, current_user_id: int) -> None:
     """撤销 refresh token，使其不可再用于刷新；校验 token 归属当前用户"""
     try:
         payload = decode_token(refresh_token, expected_type="refresh")
-        token_user_id = int(payload.get("sub"))
+        token_user_id = _extract_user_id(payload)
         jti = payload.get("jti")
-    except (InvalidTokenError, TypeError, ValueError) as exc:
+    except (InvalidTokenError, ValueError) as exc:
         raise AuthException("Invalid refresh token") from exc
 
     if token_user_id != current_user_id:
@@ -99,8 +106,8 @@ def logout_user(refresh_token: str, current_user_id: int) -> None:
 def get_current_active_user(session: Session, token: str) -> User:
     try:
         payload = decode_token(token, expected_type="access")
-        user_id = int(payload.get("sub"))
-    except (InvalidTokenError, TypeError, ValueError) as exc:
+        user_id = _extract_user_id(payload)
+    except (InvalidTokenError, ValueError) as exc:
         raise AuthException("Could not validate credentials") from exc
 
     user = user_repository.get(session, user_id)
