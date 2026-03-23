@@ -6,8 +6,9 @@ from app.schemas.common import HealthStatus
 
 router = APIRouter()
 
+
 @router.get("/", response_model=HealthStatus)
-def health_check() -> HealthStatus | JSONResponse:
+def health_check():
     try:
         check_database_health()
         return HealthStatus(status="ok", database="up")

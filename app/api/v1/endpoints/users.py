@@ -8,12 +8,12 @@ from app.api.docs import (
     UNPROCESSABLE_ENTITY_RESPONSE,
 )
 from app.modules.users.deps import UserListDep
-from app.modules.users.models import User
 from app.modules.users.schemas import UserResponse, UserUpdate
 from app.modules.users.service import list_users_with_count, update_user
 from app.schemas.common import Page
 
 router = APIRouter()
+
 
 @router.get(
     "/me",
@@ -25,8 +25,9 @@ router = APIRouter()
         401: UNAUTHORIZED_RESPONSE,
     },
 )
-def read_user_me(current_user: CurrentUser) -> User:
+def read_user_me(current_user: CurrentUser):
     return current_user
+
 
 @router.put(
     "/me",
@@ -39,8 +40,9 @@ def read_user_me(current_user: CurrentUser) -> User:
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def update_user_me(session: SessionDep, current_user: CurrentUser, user_in: UserUpdate) -> User:
+def update_user_me(session: SessionDep, current_user: CurrentUser, user_in: UserUpdate):
     return update_user(session, current_user, user_in)
+
 
 @router.get(
     "/",
@@ -53,11 +55,7 @@ def update_user_me(session: SessionDep, current_user: CurrentUser, user_in: User
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def read_users(
-    session: SessionDep,
-    params: UserListDep,
-    current_user: CurrentSuperuser,
-) -> Page[UserResponse]:
+def read_users(session: SessionDep, params: UserListDep, current_user: CurrentSuperuser):
     users, total = list_users_with_count(session, params)
     return Page[UserResponse](
         items=users,

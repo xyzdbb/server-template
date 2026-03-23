@@ -29,22 +29,22 @@ class Page(BaseModel, Generic[T]):
     skip: int = Field(ge=0)
     limit: int = Field(gt=0)
 
-    @computed_field  # type: ignore[prop-decorator]
+    @computed_field
     @property
     def current_page(self) -> int:
         return self.skip // self.limit + 1
 
-    @computed_field  # type: ignore[prop-decorator]
+    @computed_field
     @property
     def total_pages(self) -> int:
         return math.ceil(self.total / self.limit) if self.total > 0 else 0
 
-    @computed_field  # type: ignore[prop-decorator]
+    @computed_field
     @property
     def has_next(self) -> bool:
         return (self.skip + self.limit) < self.total
 
-    @computed_field  # type: ignore[prop-decorator]
+    @computed_field
     @property
     def has_previous(self) -> bool:
         return self.skip > 0

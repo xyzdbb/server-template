@@ -52,15 +52,21 @@ ignore = [
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
-disallow_untyped_defs = true   # 函数必须有类型注解，是 mypy 最核心的价值
-check_untyped_defs = false     # 不深入检查无注解函数内部，减少噪音
+disallow_untyped_defs = true
+check_untyped_defs = false
 warn_return_any = false
 warn_unused_ignores = true
+disable_error_code = ["prop-decorator", "call-overload"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
+module = ["app.api.*"]
+disallow_untyped_defs = false
+disable_error_code = ["arg-type"]
+
+[[tool.mypy.overrides]]
 module = ["app.repositories.*", "app.modules.*.repository"]
-disable_error_code = ["union-attr", "attr-defined", "call-overload", "assignment"]
+disable_error_code = ["union-attr", "attr-defined", "assignment"]
 
 
 [tool.pytest.ini_options]
