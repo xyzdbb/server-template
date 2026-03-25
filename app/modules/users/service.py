@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlmodel import Session
 
 from app.core.security import get_password_hash, validate_password_strength
@@ -8,7 +10,7 @@ from app.modules.users.schemas import UserCreate, UserListParams, UserUpdate
 from app.utils.exceptions import ConflictException, ValidationException
 
 
-def _validate_and_build_user_data(session: Session, user_in: UserCreate) -> dict:
+def _validate_and_build_user_data(session: Session, user_in: UserCreate) -> dict[str, Any]:
     existing = user_repository.get_by_username(session, user_in.username)
     if existing:
         raise ConflictException("Username already registered")
