@@ -59,11 +59,9 @@ warn_unused_ignores = true
 disable_error_code = ["prop-decorator", "call-overload"]
 plugins = ["pydantic.mypy"]
 
-[[tool.mypy.overrides]]
-module = ["app.api.*"]
-disallow_untyped_defs = false
-disable_error_code = ["arg-type"]
-
+# SQLModel/SQLAlchemy 的 InstrumentedAttribute 等在 mypy 下类型推断不完整，会产生大量误报。
+# 此处是知情取舍：压制误报而非修复 ORM 层类型，后续若上游类型改善可收紧。
+# 参见: https://github.com/tiangolo/sqlmodel/issues/52
 [[tool.mypy.overrides]]
 module = ["app.repositories.*", "app.modules.*.repository"]
 disable_error_code = ["union-attr", "attr-defined", "assignment"]

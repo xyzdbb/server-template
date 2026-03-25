@@ -8,7 +8,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=HealthStatus)
-def health_check():
+def health_check() -> HealthStatus | JSONResponse:
     try:
         check_database_health()
         return HealthStatus(status="ok", database="up")
