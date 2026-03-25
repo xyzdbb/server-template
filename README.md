@@ -396,8 +396,8 @@ uv run alembic upgrade head
 | 方法 | 路径 | 说明 | 认证 | 频率限制 |
 |------|------|------|------|----------|
 | POST | `/login` | 用户名密码登录，返回 access + refresh token | 否 | 5次/分钟/IP |
-| POST | `/refresh` | 用 refresh token 换取新 token 对（旧 token 自动失效） | 否 | 无 |
-| POST | `/logout` | 撤销 refresh token，立即生效 | 否 | 无 |
+| POST | `/refresh` | 用 refresh token 换取新 token 对（旧 token 自动失效） | 否 | 20次/分钟/IP |
+| POST | `/logout` | 撤销 refresh token，立即生效 | 是 | 无 |
 | POST | `/signup` | 注册新用户 | 否 | 3次/分钟/IP |
 
 ### Users 模块 `/api/v1/users`
@@ -621,7 +621,7 @@ sequenceDiagram
 ### 代码规范
 
 - Python 3.12+，遵循 PEP 8
-- 使用 ruff 格式化和 lint（行宽 88）
+- 使用 ruff 格式化和 lint（行宽 120）
 - 类型注解使用 Python 3.10+ 语法（`str | None` 而非 `Optional[str]`）
 
 ---
