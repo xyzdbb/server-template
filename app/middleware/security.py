@@ -1,11 +1,4 @@
-from collections.abc import Awaitable, Callable
-from typing import Any
-
-_Scope = dict[str, Any]
-_Message = dict[str, Any]
-_Receive = Callable[[], Awaitable[_Message]]
-_Send = Callable[[_Message], Awaitable[None]]
-_ASGIApp = Callable[[_Scope, _Receive, _Send], Awaitable[None]]
+from app.middleware._types import _ASGIApp, _Message, _Receive, _Scope, _Send
 
 # NOTE: Strict-Transport-Security (HSTS) 不在此处设置。
 # HSTS 应由反向代理 / 负载均衡器（Nginx、Cloudflare、ALB 等）统一注入，
