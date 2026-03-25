@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.deps import CurrentSuperuser, CurrentUser, SessionDep, db_user_id
+from app.api.deps import CurrentSuperuser, CurrentUser, SessionDep
 from app.api.docs import (
     FORBIDDEN_RESPONSE,
     NOT_FOUND_RESPONSE,
@@ -34,7 +34,7 @@ router = APIRouter()
     },
 )
 def create_new_item(session: SessionDep, current_user: CurrentUser, item_in: ItemCreate) -> Item:
-    return create_item(session, item_in, owner_id=db_user_id(current_user))
+    return create_item(session, item_in, owner_id=current_user.pk)
 
 
 @router.get(
@@ -48,7 +48,7 @@ def create_new_item(session: SessionDep, current_user: CurrentUser, item_in: Ite
     },
 )
 def read_my_items(session: SessionDep, current_user: CurrentUser, params: ItemListDep) -> Page[ItemResponse]:
-    items, total = list_items_with_count(session, params, owner_id=db_user_id(current_user))
+    items, total = list_items_with_count(session, params, owner_id=current_user.pk)
     return Page[ItemResponse](items=items, total=total, skip=params.skip, limit=params.limit)
 
 
@@ -65,7 +65,7 @@ def read_my_items(session: SessionDep, current_user: CurrentUser, params: ItemLi
 )
 def read_item(session: SessionDep, current_user: CurrentUser, item_id: int) -> Item:
     return get_item(
-        session, item_id, db_user_id(current_user), is_superuser=current_user.is_superuser
+        session, item_id, current_user.pk, is_superuser=current_user.is_superuser
     )
 
 
@@ -85,7 +85,7 @@ def update_existing_item(
     session: SessionDep, current_user: CurrentUser, item_id: int, item_in: ItemUpdate
 ) -> Item:
     return update_item(
-        session, item_id, item_in, db_user_id(current_user), is_superuser=current_user.is_superuser
+        session, item_id, item_in, current_user.pk, is_superuser=current_user.is_superuser
     )
 
 
@@ -102,7 +102,7 @@ def update_existing_item(
 )
 def delete_existing_item(session: SessionDep, current_user: CurrentUser, item_id: int) -> None:
     delete_item(
-        session, item_id, db_user_id(current_user), is_superuser=current_user.is_superuser
+        session, item_id, current_user.pk, is_superuser=current_user.is_superuser
     )
 
 

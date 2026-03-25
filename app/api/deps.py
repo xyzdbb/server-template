@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.database import get_session
 from app.modules.auth.service import get_current_active_user
 from app.modules.users.models import User
-from app.utils.exceptions import AuthException, PermissionDeniedException
+from app.utils.exceptions import PermissionDeniedException
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
@@ -21,14 +21,6 @@ def get_current_user(session: SessionDep, token: TokenDep) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
-
-
-def db_user_id(user: User) -> int:
-    """从已持久化的 User 取主键；CurrentUser 场景下 id 必存在，供 mypy 收窄类型。"""
-    uid = user.id
-    if uid is None:
-        raise AuthException("User ID is missing")
-    return uid
 
 
 def get_current_superuser(current_user: CurrentUser) -> User:

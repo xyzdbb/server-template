@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.api.deps import CurrentUser, SessionDep, db_user_id
+from app.api.deps import CurrentUser, SessionDep
 from app.api.docs import (
     CONFLICT_RESPONSE,
     UNAUTHORIZED_RESPONSE,
@@ -56,7 +56,7 @@ def login(
     user = authenticate_user(session, form_data.username, form_data.password)
     if not user:
         raise AuthException("Incorrect username or password")
-    tokens = create_user_token(db_user_id(user))
+    tokens = create_user_token(user.pk)
     return Token(**tokens)
 
 
@@ -102,7 +102,7 @@ def refresh_access_token(
     },
 )
 def logout(body: RefreshTokenRequest, current_user: CurrentUser) -> None:
-    logout_user(body.refresh_token, db_user_id(current_user))
+    logout_user(body.refresh_token, current_user.pk)
 
 
 @router.post(
