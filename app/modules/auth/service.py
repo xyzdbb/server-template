@@ -84,7 +84,8 @@ def refresh_user_token(session: Session, refresh_token: str) -> dict[str, str]:
     if old_jti:
         _revoke_refresh_jti(old_jti)
 
-    assert user.id is not None
+    if user.id is None:
+        raise AuthException("User ID is missing")
     return create_user_token(user.id)
 
 
