@@ -2,10 +2,8 @@ from datetime import UTC, datetime
 from typing import Any, Generic, TypeVar
 
 from sqlalchemy import Select, func
-from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select
 
-from app.core.logging import logger
 from app.models.base import TableBase
 from app.schemas.common import SortOrder
 from app.utils.exceptions import ValidationException
@@ -40,15 +38,11 @@ class RepositoryBase(Generic[ModelType]):
         return int(session.exec(count_statement).one())
 
     def get(self, session: Session, id: int) -> ModelType | None:
-        try:
-            statement = select(self.model).where(
-                self.model.id == id,
-                self.model.deleted_at.is_(None),
-            )
-            return session.exec(statement).first()
-        except SQLAlchemyError as exc:
-            logger.error(f"Error getting {self.model.__name__}: {exc}")
-            raise
+        statement = select(self.model).where(
+            self.model.id == id,
+            self.model.deleted_at.is_(None),
+        )
+        return session.exec(statement).first()
 
     def get_multi(
         self,
@@ -58,34 +52,22 @@ class RepositoryBase(Generic[ModelType]):
         sort_by: str = "created_at",
         sort_order: SortOrder = "desc",
     ) -> list[ModelType]:
-        try:
-            statement = select(self.model).where(self.model.deleted_at.is_(None))
-            statement = self._apply_sort(statement, sort_by=sort_by, sort_order=sort_order)
-            statement = statement.offset(skip).limit(limit)
-            return list(session.exec(statement).all())
-        except SQLAlchemyError as exc:
-            logger.error(f"Error getting multiple {self.model.__name__}: {exc}")
-            raise
+        statement = select(self.model).where(self.model.deleted_at.is_(None))
+        statement = self._apply_sort(statement, sort_by=sort_by, sort_order=sort_order)
+        statement = statement.offset(skip).limit(limit)
+        return list(session.exec(statement).all())
 
     def count(self, session: Session) -> int:
-        try:
-            statement = select(self.model).where(
-                self.model.deleted_at.is_(None)
-            )
-            return self._count_statement(session, statement)
-        except SQLAlchemyError as exc:
-            logger.error(f"Error counting {self.model.__name__}: {exc}")
-            raise
+        statement = select(self.model).where(
+            self.model.deleted_at.is_(None)
+        )
+        return self._count_statement(session, statement)
 
     def create(self, session: Session, obj_in: dict[str, Any]) -> ModelType:
-        try:
-            db_obj = self.model(**obj_in)
-            session.add(db_obj)
-            session.flush()
-            return db_obj
-        except SQLAlchemyError as exc:
-            logger.error(f"Error creating {self.model.__name__}: {exc}")
-            raise
+        db_obj = self.model(**obj_in)
+        session.add(db_obj)
+        session.flush()
+        return db_obj
 
     def update(
         self,
@@ -93,29 +75,21 @@ class RepositoryBase(Generic[ModelType]):
         db_obj: ModelType,
         obj_in: dict[str, Any],
     ) -> ModelType:
-        try:
-            for field, value in obj_in.items():
-                if field not in self._protected_fields:
-                    setattr(db_obj, field, value)
-            session.add(db_obj)
-            session.flush()
-            return db_obj
-        except SQLAlchemyError as exc:
-            logger.error(f"Error updating {self.model.__name__}: {exc}")
-            raise
+        for field, value in obj_in.items():
+            if field not in self._protected_fields:
+                setattr(db_obj, field, value)
+        session.add(db_obj)
+        session.flush()
+        return db_obj
 
     def soft_delete(self, session: Session, target: int | ModelType) -> ModelType | None:
         """标记记录为已删除（设置 deleted_at），不执行物理删除。
 
         ``target`` 可以是主键 ID 或已加载的模型实例。
         """
-        try:
-            obj = self.get(session, target) if isinstance(target, int) else target
-            if obj:
-                obj.deleted_at = datetime.now(UTC)
-                session.add(obj)
-                session.flush()
-            return obj
-        except SQLAlchemyError as exc:
-            logger.error(f"Error soft deleting {self.model.__name__}: {exc}")
-            raise
+        obj = self.get(session, target) if isinstance(target, int) else target
+        if obj:
+            obj.deleted_at = datetime.now(UTC)
+            session.add(obj)
+            session.flush()
+        return obj

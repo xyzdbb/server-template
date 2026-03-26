@@ -3,12 +3,11 @@ from typing import Annotated
 from fastapi import Depends, Query
 
 from app.modules.items.schemas import ItemListParams, ItemSortField
-from app.schemas.common import SortOrder
+from app.schemas.common import PaginationParams, SortOrder
 
 
 def get_item_list_params(
-    skip: int = Query(default=0, ge=0, description="Number of records to skip."),
-    limit: int = Query(default=100, ge=1, le=100, description="Maximum number of records to return."),
+    pagination: PaginationParams = Depends(),
     sort_by: ItemSortField = Query(default="created_at", description="Field used to sort the item list."),
     sort_order: SortOrder = Query(default="desc", description="Sort direction."),
     search: str | None = Query(
@@ -18,8 +17,8 @@ def get_item_list_params(
     ),
 ) -> ItemListParams:
     return ItemListParams(
-        skip=skip,
-        limit=limit,
+        skip=pagination.skip,
+        limit=pagination.limit,
         sort_by=sort_by,
         sort_order=sort_order,
         search=search,

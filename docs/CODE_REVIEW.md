@@ -72,7 +72,7 @@
 3. **Redis 连接池单例** — `_get_pool()` 避免重复创建
 4. **gunicorn + UvicornWorker** — 生产部署通过多进程扩展，sync endpoint 会进入线程池，不阻塞事件循环
 
-### 可优化项
+### 已处理项（原“可优化项”）
 
 1. **`get_multi_with_count` 执行两次查询** — 先 COUNT 再 SELECT，对于大表会有性能问题。对中小型项目完全可接受，如未来数据量增长，可考虑 window function 或只在首页请求 count
 
@@ -97,9 +97,9 @@
 
 ### 可优化项
 
-1. **Repository 层双重日志问题** — `RepositoryBase` 的每个方法都 catch `SQLAlchemyError` 然后 log + re-raise，导致同一错误在 repository 层 log 一次、error_handler 中间件 log 一次。建议去掉 repository 层的 try-except-log-reraise，让异常自然传播到 error_handler 统一处理
+1. **Repository 层双重日志问题（已处理）** — 已移除 `RepositoryBase` 中的 try-except-log-reraise，数据库异常现在直接上抛到 error_handler 统一记录和处理
 
-2. **`PaginationParams` 约束重复** — `schemas/common.py` 中的 `PaginationParams` 字段约束和 `deps.py` 中的 `Query` 约束是重复的。不算 bug，但增加了维护成本
+2. **`PaginationParams` 约束重复（已处理）** — `items/users` 模块的 `deps.py` 已改为复用 `PaginationParams = Depends()`，消除 `skip/limit` 约束的重复定义
 
 3. **全局单例 Repository** — `user_repository = UserRepository(User)` 在模块级别实例化。对于无状态的 repository 完全没问题，如果未来 repository 需要持有 session 或配置状态，就需要重构。当前设计是正确的
 
@@ -131,10 +131,11 @@
 |---|------|----|--------|------|------|
 | 1 | `README.md` | 代码规范章节 | **错误** | "使用 ruff 格式化和 lint（行宽 88）" 但 `pyproject.toml` 配置为 120 | 改为 120 ✅ 已修复 |
 | 2 | `README.md` | API 接口概览 | **错误** | `/auth/refresh` 标注"无"频率限制，但代码实际为 `20/minute`；`/auth/logout` 认证标注"否"但实际需要认证 | 更新表格 ✅ 已修复 |
-| 3 | `repositories/base.py` | 全部方法 | 低 | 每个方法都 try-except-log-reraise，导致同一错误双重日志 | 去掉 repository 层异常捕获，让 error_handler 统一处理 |
+| 3 | `repositories/base.py` | 全部方法 | 低 | 每个方法都 try-except-log-reraise，导致同一错误双重日志 | 去掉 repository 层异常捕获，让 error_handler 统一处理 ✅ 已修复 |
 | 4 | `middleware/security.py` | SECURITY_HEADERS | 低 | 未包含 `Content-Security-Policy` header | 添加基础 CSP（`default-src 'self'`），即使是 API 服务也建议有 |
 | 5 | `modules/items/models.py` | `__table_args__` | 低 | partial index 只覆盖 `id`，`owner_id` 的高频过滤查询无法利用索引 | 考虑改为 `(owner_id) WHERE deleted_at IS NULL` |
 | 6 | `core/database.py` | `_engine` 全局变量 | 无害 | 理论上有竞态条件，但 GIL + SQLAlchemy 线程安全保证实际不会出现问题 | 可忽略 |
+| 7 | `modules/*/deps.py` | 列表参数依赖 | 低 | `PaginationParams` 字段约束与 `Query` 约束重复定义 | 统一复用 `PaginationParams = Depends()` ✅ 已修复 |
 
 ---
 
@@ -145,7 +146,7 @@
 按优先级排列的处理建议：
 
 - **已修复** — README 的两处事实错误（行宽 88→120，/auth/refresh 频率限制和 /auth/logout 认证说明）
-- **建议处理** — repository 层的 try-except-log-reraise 模式（#3），这是模板中最值得清理的代码味道
+- **已修复** — repository 层 try-except-log-reraise 双重日志问题（#3）与分页参数重复约束问题（#7）
 - **可选优化** — CSP header（#4）、items partial index（#5），属于锦上添花
 
 模板的核心价值在于**约定 > 配置**、**一致的分层模式**、**完整的示例模块**，这三点都做得很好。
