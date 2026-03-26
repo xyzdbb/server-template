@@ -397,7 +397,7 @@ uv run alembic upgrade head
 |------|------|------|------|----------|
 | POST | `/login` | 用户名密码登录，返回 access + refresh token | 否 | 5次/分钟/IP |
 | POST | `/refresh` | 用 refresh token 换取新 token 对（旧 token 自动失效） | 否 | 20次/分钟/IP |
-| POST | `/logout` | 撤销 refresh token，立即生效 | 是 | 无 |
+| POST | `/logout` | 撤销 refresh token，立即生效 | 是 | 30次/分钟/IP |
 | POST | `/signup` | 注册新用户 | 否 | 3次/分钟/IP |
 
 ### Users 模块 `/api/v1/users`
@@ -594,11 +594,14 @@ sequenceDiagram
 - 接口鉴权通过 `deps.py` 中的 `CurrentUser`（普通用户）和 `CurrentSuperuser`（管理员）依赖注入
 - 用户不存在时仍执行 `DUMMY_HASH` 验证，抹平响应时间差，防止时序攻击枚举用户名
 
+> **Cookie 模式提醒**：当前模板通过 JSON body 返回 token，不依赖 cookie。若你改为 cookie 存储 token，请务必设置 `Secure`、`HttpOnly`、`SameSite` 等属性，并结合 CSRF 防护策略。
+
 ### 频率限制
 
 | 端点 | 限制 | 说明 |
 |------|------|------|
 | `POST /auth/login` | 5次/分钟/IP | 防暴力破解 |
+| `POST /auth/logout` | 30次/分钟/IP | 降低已泄露 token 被高频滥用的风险 |
 | `POST /auth/signup` | 3次/分钟/IP | 防批量注册 |
 
 超限返回 `429 Too Many Requests`，计数器存储于 Redis。

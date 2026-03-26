@@ -43,7 +43,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
             hashed_password.encode("utf-8"),
         )
     except (ValueError, TypeError):
-        # 例如 bcrypt 会拒绝超过 72 bytes 的 password
+        # bcrypt 对输入有 72 bytes 的限制；本项目在 users schema 中限制 password max_length=40，
+        # 正常请求不会触发该边界，这里仍保底返回 False。
         return False
 
 
@@ -53,6 +54,7 @@ def get_password_hash(password: str) -> str:
 
 def validate_password_strength(password: str) -> tuple[bool, str]:
     """校验密码字符类别（长度由 Pydantic schema 约束，此处不重复检查）"""
+    # 模板默认仅要求大小写+数字。业务可按需继续增加特殊字符或黑名单词校验。
     if not any(c.isupper() for c in password):
         return False, "Password must contain uppercase"
     if not any(c.islower() for c in password):

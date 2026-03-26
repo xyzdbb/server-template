@@ -101,7 +101,8 @@ def refresh_access_token(
         422: UNPROCESSABLE_ENTITY_RESPONSE,
     },
 )
-def logout(body: RefreshTokenRequest, current_user: CurrentUser) -> None:
+@limiter.limit("30/minute")
+def logout(request: Request, body: RefreshTokenRequest, current_user: CurrentUser) -> None:
     logout_user(body.refresh_token, current_user.pk)
 
 
