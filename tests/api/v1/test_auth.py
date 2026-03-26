@@ -126,3 +126,35 @@ def test_logout_without_auth_returns_unauthorized(client: TestClient):
         json={"refresh_token": "some-token"},
     )
     assert resp.status_code == 401
+
+
+def test_logout_rate_limit(client: TestClient):
+    """logout 接口应命中 30/minute 限流。"""
+    client.post("/api/v1/auth/signup", json={"username": "rate_user", "password": "Test1234"})
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "rate_user", "password": "Test1234"},
+    )
+    access_token = login_resp.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    from app.core.limiter import limiter
+
+    limiter.enabled = True
+    try:
+        for _ in range(30):
+            resp = client.post(
+                "/api/v1/auth/logout",
+                json={"refresh_token": "invalid-refresh-token"},
+                headers=headers,
+            )
+            assert resp.status_code == 401
+
+        limited = client.post(
+            "/api/v1/auth/logout",
+            json={"refresh_token": "invalid-refresh-token"},
+            headers=headers,
+        )
+        assert limited.status_code == 429
+    finally:
+        limiter.enabled = False

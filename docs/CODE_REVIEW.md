@@ -49,15 +49,15 @@
 6. **LIKE 注入防护** (`repositories/base.py:17-19`) — `_escape_like` 正确转义 `%`、`_`、`\`
 7. **logout 校验 token 归属** — 防止 A 用户撤销 B 用户的 refresh token
 
-### 可优化项
+### 已处理项（原“可优化项”）
 
-1. **密码强度校验偏基础** (`core/security.py:50-56`) — 只检查大小写+数字，没有特殊字符要求。作为模板建议至少加注释说明可按需扩展
+1. **密码强度校验偏基础（已说明）** (`core/security.py`) — 保持模板默认规则为大小写+数字，并在 `validate_password_strength` 添加注释，明确业务可按需扩展特殊字符/黑名单词策略
 
-2. **bcrypt 72 字节截断未警告** — `verify_password` 中 catch 了异常但返回 `False`。bcrypt 默认截断超过 72 字节的密码，这意味着两个仅在第 73 字节后不同的密码会通过校验。schema 已限制 `max_length=40` 所以实际不会触发，但建议加注释说明这个约束关系
+2. **bcrypt 72 字节截断（已说明）** (`core/security.py`) — 在 `verify_password` 异常分支补充注释，说明 bcrypt 72 bytes 限制与 `UserCreate` 的 `password max_length=40` 约束关系
 
-3. **`/auth/logout` 没有 rate limit** — 虽然需要认证，但恶意持有大量 token 的攻击者可以高频调用。风险较低，但模板可以加个 `30/minute` 示意
+3. **`/auth/logout` 限流（已处理）** (`api/v1/endpoints/auth.py`) — 已添加 `@limiter.limit("30/minute")`，并补充了对应测试用例 `tests/api/v1/test_auth.py::test_logout_rate_limit`
 
-4. **建议添加 `Secure` 和 `SameSite` 说明** — 当前 token 通过 JSON body 传递而非 cookie，所以不涉及 cookie 安全属性。但如果使用者改为 cookie 模式，需要提醒他们设置这些属性。建议在 README 的认证章节加 NOTE
+4. **`Secure` / `SameSite` 文档提醒（已处理）** (`README.md`) — 已在认证章节增加 Cookie 模式安全提示，明确 token 改为 cookie 存储时需配置 `Secure`、`HttpOnly`、`SameSite` 并配合 CSRF 防护
 
 ---
 
